@@ -1,0 +1,214 @@
+---
+/**
+ * Page projet, « Le contexte » : la présentation du projet, puis ses chiffres
+ * (facultatifs : `facts` et `compression` dans src/data/portfolio.ts).
+ */
+import type { Project } from '../../lib/portfolio';
+import TrackLabel from '../ui/TrackLabel.astro';
+
+interface Props {
+  project: Project;
+  track: string;
+  index: string;
+}
+
+const { project: p, track, index } = Astro.props;
+const [intro, ...rest] = p.context;
+const cs = p.compression;
+const reduction = cs ? Math.round((1 - cs.finalSeconds / cs.rawSeconds) * 100) : 0;
+const isInteger = (value: string): boolean => /^\d+$/.test(value);
+const hasData = p.facts.length > 0 || Boolean(cs);
+---
+
+<section id="contexte" class="section pctx" data-chapter="Contexte">
+  <div class:list={['wrap pctx__grid', !hasData && 'pctx__grid--solo']}>
+    <div class="pctx__text">
+      <TrackLabel track={track} index={index} label="Le projet" />
+      <h2 class="ps-title" data-reveal="lines">Le <span class="serif">contexte.</span></h2>
+      {intro && <p class="pctx__intro" data-reveal="scrub">{intro}</p>}
+      {
+        rest.length > 0 && (
+          <div class="pctx__rest" data-reveal="stagger">
+            {rest.map((text) => (
+              <p>{text}</p>
+            ))}
+          </div>
+        )
+      }
+    </div>
+
+    {
+      hasData && (
+        <div class="pctx__data">
+          {p.facts.length > 0 && (
+            <dl class="pctx__facts" data-reveal="stagger">
+              {p.facts.map((f) => (
+                <div>
+                  <dt class="mono">{f.label}</dt>
+                  <dd>{isInteger(f.value) ? <span data-count={f.value}>{f.value}</span> : f.value}</dd>
+                </div>
+              ))}
+            </dl>
+          )}
+          {cs && (
+            <div class="squeeze" role="img" aria-label={`Rush de ${cs.raw} monté en ${cs.final}`}>
+              <div class="squeeze__row">
+                <span class="mono">Rush brut</span>
+                <span class="squeeze__track">
+                  <i class="squeeze__bar" data-grow style="width:100%" />
+                </span>
+                <span class="squeeze__val">{cs.raw}</span>
+              </div>
+              <div class="squeeze__row">
+                <span class="mono">Montage</span>
+                <span class="squeeze__track">
+                  <i
+                    class="squeeze__bar squeeze__bar--final"
+                    data-grow
+                    data-grow-delay="0.25"
+                    style={`width:${((cs.finalSeconds / cs.rawSeconds) * 100).toFixed(2)}%`}
+                  />
+                </span>
+                <span class="squeeze__val">
+                  {cs.final} <span class="text-accent">−{reduction} %</span>
+                </span>
+              </div>
+            </div>
+          )}
+        </div>
+      )
+    }
+  </div>
+</section>
+
+<style>
+  .pctx {
+    border-top: 1px solid var(--line);
+  }
+
+  .pctx__grid {
+    display: grid;
+    gap: clamp(3rem, 6vw, 5rem);
+  }
+
+  @media (min-width: 64rem) {
+    .pctx__grid:not(.pctx__grid--solo) {
+      grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+      align-items: end;
+    }
+  }
+
+  .pctx__text {
+    display: grid;
+    gap: 1.75rem;
+    align-content: start;
+  }
+
+  .pctx__intro {
+    max-width: 54ch;
+    color: var(--color-fog-100);
+    font-size: clamp(1.2rem, 1.6vw, 1.4rem);
+    line-height: 1.5;
+    letter-spacing: -0.015em;
+  }
+
+  .pctx__rest {
+    display: grid;
+    gap: 1.1rem;
+    max-width: 58ch;
+    color: var(--color-fog-300);
+    font-size: 1.05rem;
+  }
+
+  .pctx__data {
+    display: grid;
+    gap: 2rem;
+  }
+
+  /* Chiffres du montage : une grille de cellules séparées par un filet */
+  .pctx__facts {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1px;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--line);
+    background: var(--line);
+    overflow: hidden;
+  }
+
+  .pctx__facts > div {
+    display: flex;
+    flex-direction: column-reverse;
+    justify-content: flex-end;
+    gap: 0.4rem;
+    padding: 1.2rem 1.25rem;
+    background: var(--color-ink-900);
+    transition: background-color 0.4s ease;
+  }
+
+  .pctx__facts > div:hover {
+    background: var(--color-ink-850);
+  }
+
+  .pctx__facts dt {
+    color: var(--color-fog-400);
+    font-size: 0.6rem;
+  }
+
+  .pctx__facts dd {
+    font-size: clamp(1.7rem, 2.6vw, 2.3rem);
+    font-weight: 560;
+    letter-spacing: -0.04em;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* ── Rush → montage ── */
+  .squeeze {
+    display: grid;
+    gap: 0.7rem;
+  }
+
+  .squeeze__row {
+    display: grid;
+    grid-template-columns: 5.5rem minmax(0, 1fr) auto;
+    gap: 0.9rem;
+    align-items: center;
+  }
+
+  .squeeze__row .mono {
+    color: var(--color-fog-400);
+    font-size: 0.6rem;
+  }
+
+  .squeeze__track {
+    position: relative;
+    height: 0.6rem;
+    border-radius: 3px;
+    background: rgb(255 255 255 / 0.05);
+    overflow: hidden;
+  }
+
+  .squeeze__bar {
+    position: absolute;
+    inset: 0 auto 0 0;
+    border-radius: 3px;
+    background: repeating-linear-gradient(90deg, rgb(255 255 255 / 0.22) 0 3px, rgb(255 255 255 / 0.1) 3px 6px);
+  }
+
+  .squeeze__bar--final {
+    background: var(--color-rec);
+    box-shadow: 0 0 16px rgb(229 22 42 / 0.6);
+  }
+
+  .squeeze__val {
+    min-width: 6.5rem;
+    font-variant-numeric: tabular-nums;
+    font-weight: 500;
+  }
+
+  .squeeze__val .text-accent {
+    margin-left: 0.4rem;
+    font-size: 0.8rem;
+  }
+</style>

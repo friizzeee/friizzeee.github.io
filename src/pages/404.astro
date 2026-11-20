@@ -1,0 +1,83 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Button from '../components/ui/Button.astro';
+---
+
+<BaseLayout title="Média hors ligne" noindex>
+  <section class="offline">
+    <div class="offline__screen hatch" aria-hidden="true">
+      <div class="corners"><i></i><i></i><i></i><i></i></div>
+      <span class="offline__tc mono">--:--:--:--</span>
+    </div>
+    <div class="wrap offline__content">
+      <p class="mono offline__code"><span class="rec-dot" aria-hidden="true"></span>Erreur 404</p>
+      <h1 class="h-display offline__title">Média <span class="serif">hors ligne.</span></h1>
+      <p class="lead">Ce plan n’existe pas, ou il a été coupé au montage. Revenez à la séquence principale.</p>
+      <div class="offline__actions">
+        <Button href="/" variant="primary">Retour à l’accueil</Button>
+        <Button href="/contact">Me contacter</Button>
+      </div>
+    </div>
+  </section>
+</BaseLayout>
+
+<style>
+  .offline {
+    position: relative;
+    display: grid;
+    place-items: center;
+    min-height: 100svh;
+    padding-block: calc(var(--header-h) + 3rem) 4rem;
+    overflow: hidden;
+  }
+
+  .offline__screen {
+    position: absolute;
+    inset: calc(var(--header-h) + 1rem) var(--gutter) 1.5rem;
+    border-radius: var(--radius-xl);
+    border: 1px solid rgb(255 77 90 / 0.25);
+    background-color: rgb(229 22 42 / 0.05);
+    background-image: repeating-linear-gradient(-45deg, rgb(255 77 90 / 0.07) 0 1px, transparent 1px 14px);
+  }
+
+  .offline__screen .corners {
+    inset: 1.25rem;
+  }
+
+  .offline__tc {
+    position: absolute;
+    top: 1.75rem;
+    left: 2rem;
+    color: var(--color-rec-bright);
+  }
+
+  .offline__content {
+    position: relative;
+    display: grid;
+    justify-items: center;
+    gap: 1.75rem;
+    text-align: center;
+  }
+
+  .offline__code {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.6rem;
+    color: var(--color-fog-300);
+  }
+
+  .offline__title {
+    font-size: clamp(3.2rem, 11vw, 10rem);
+  }
+
+  .offline__content .lead {
+    text-align: center;
+  }
+
+  .offline__actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.75rem;
+  }
+</style>

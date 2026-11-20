@@ -1,0 +1,202 @@
+---
+import { site } from '../../config/site';
+import { navigation, contactNav } from '../../data/navigation';
+import DiscordButton from '../ui/DiscordButton.astro';
+import Icon from '../ui/Icon.astro';
+
+const year = new Date().getFullYear();
+---
+
+<footer class="footer">
+  <div class="wrap footer__grid">
+    <div class="footer__intro" data-reveal="fade">
+      <p class="footer__claim">
+        Montage vidéo pour créateurs.<br />
+        <span class="serif text-fog-300">Long format et formats courts.</span>
+      </p>
+      <DiscordButton />
+    </div>
+
+    <nav class="footer__col" aria-label="Pied de page">
+      <p class="mono footer__title">Navigation</p>
+      <ul>
+        {navigation.map((item) => (
+          <li><a href={item.href}>{item.label}</a></li>
+        ))}
+        <li><a href={contactNav.href}>{contactNav.label}</a></li>
+      </ul>
+    </nav>
+
+    <div class="footer__col">
+      <p class="mono footer__title">Paiement</p>
+      <ul>
+        <li>Après livraison</li>
+        <li>Paiement crypto via Apa</li>
+        <li><a href="/#offres">Voir les offres</a></li>
+      </ul>
+    </div>
+
+    <div class="footer__col">
+      <p class="mono footer__title">Timecode</p>
+      <a href="/#top" class="footer__top" data-scroll-top>
+        <Icon name="arrow-down" />
+        <span class="footer__top-text">
+          Revenir en haut
+          <span class="mono" aria-hidden="true">00:00:00:00</span>
+        </span>
+      </a>
+    </div>
+  </div>
+
+  <div class="footer__mark" aria-hidden="true">
+    <span class="footer__word" data-parallax="-6" data-reveal="chars" data-reveal-start="top 98%">{site.name}</span>
+  </div>
+
+  <div class="wrap footer__legal">
+    <p>© {year} {site.name}. {site.role}.</p>
+    <p class="mono">Fait image par image</p>
+  </div>
+</footer>
+
+<style>
+  .footer {
+    position: relative;
+    overflow: hidden;
+    padding-top: clamp(5rem, 9vw, 8rem);
+    border-top: 1px solid var(--line);
+    background: linear-gradient(180deg, var(--color-ink-950), var(--color-ink-900));
+  }
+
+  .footer__grid {
+    display: grid;
+    gap: 3rem;
+  }
+
+  .footer__claim {
+    margin-bottom: 2rem;
+    font-size: clamp(1.6rem, 3vw, 2.4rem);
+    font-weight: 540;
+    letter-spacing: -0.035em;
+    line-height: 1.1;
+  }
+
+  .footer__title {
+    margin-bottom: 1.1rem;
+    color: var(--color-fog-400);
+    font-size: 0.66rem;
+  }
+
+  .footer__col ul {
+    display: grid;
+    gap: 0.6rem;
+    color: var(--color-fog-300);
+  }
+
+  /* Soulignement qui se trace de gauche à droite au survol */
+  .footer__col a {
+    background: linear-gradient(currentColor, currentColor) 0 100% / 0% 1px no-repeat;
+    padding-bottom: 2px;
+    transition:
+      color 0.3s ease,
+      background-size 0.6s var(--ease-expo);
+  }
+
+  .footer__col a:hover,
+  .footer__col a:focus-visible {
+    color: var(--color-rec-bright);
+    background-size: 100% 1px;
+  }
+
+  .footer__top {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.75rem;
+    color: var(--color-fog-300);
+  }
+
+  .footer__top :global(svg) {
+    width: 2.6rem;
+    height: 2.6rem;
+    padding: 0.7rem;
+    border: 1px solid var(--line-strong);
+    border-radius: 50%;
+    transform: rotate(180deg);
+    transition:
+      transform 0.6s var(--ease-expo),
+      border-color 0.3s ease;
+  }
+
+  .footer__top-text {
+    display: grid;
+    gap: 0.2rem;
+  }
+
+  .footer__top-text .mono {
+    color: var(--color-fog-400);
+    font-size: 0.62rem;
+  }
+
+  .footer__top:hover :global(svg) {
+    transform: rotate(180deg) translateY(4px);
+    border-color: var(--color-rec-bright);
+  }
+
+  .footer__mark {
+    margin-top: clamp(4rem, 8vw, 7rem);
+    display: flex;
+    justify-content: center;
+    line-height: 0.74;
+    user-select: none;
+    /* Rogne seulement le bas : les lettres montent depuis le bord, le haut des lettres reste libre */
+    clip-path: inset(-100% -10% 0 -10%);
+  }
+
+  .footer__word {
+    display: block;
+    font-size: clamp(6rem, 27vw, 30rem);
+    font-weight: 640;
+    letter-spacing: -0.075em;
+    color: rgb(255 255 255 / 0.07);
+    -webkit-mask-image: linear-gradient(180deg, #000 30%, transparent 92%);
+    mask-image: linear-gradient(180deg, #000 30%, transparent 92%);
+  }
+
+  .footer__legal {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 0.5rem 2rem;
+    padding-block: 1.5rem 7rem;
+    border-top: 1px solid var(--line);
+    color: var(--color-fog-400);
+    font-size: 0.85rem;
+  }
+
+  .footer__legal .mono {
+    font-size: 0.62rem;
+  }
+
+  @media (min-width: 48rem) {
+    .footer__grid {
+      grid-template-columns: repeat(3, 1fr);
+    }
+
+    .footer__intro {
+      grid-column: 1 / -1;
+    }
+  }
+
+  @media (min-width: 64rem) {
+    .footer__grid {
+      grid-template-columns: 2.2fr 1fr 1fr 1fr;
+    }
+
+    .footer__intro {
+      grid-column: auto;
+    }
+
+    .footer__legal {
+      padding-bottom: 6rem;
+    }
+  }
+</style>

@@ -1,0 +1,36 @@
+---
+/** Logotype : le nom de la marque + le point REC rouge. */
+import { site } from '../../config/site';
+
+interface Props {
+  class?: string;
+}
+
+const { class: className } = Astro.props;
+---
+
+<span class:list={['logo', className]}>
+  <span class="logo__word">{site.name}</span><span class="logo__dot" aria-hidden="true"></span>
+</span>
+
+<style>
+  .logo {
+    display: inline-flex;
+    align-items: flex-end;
+    gap: 0.12em;
+    font-weight: 620;
+    font-size: 1.35rem;
+    letter-spacing: -0.055em;
+    line-height: 1;
+    color: var(--color-fog-100);
+  }
+
+  .logo__dot {
+    width: 0.26em;
+    height: 0.26em;
+    margin-bottom: 0.12em;
+    border-radius: 50%;
+    background: var(--color-rec);
+    box-shadow: 0 0 10px rgb(229 22 42 / 0.7);
+  }
+</style>

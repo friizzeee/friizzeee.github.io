@@ -1,0 +1,263 @@
+---
+/**
+ * Page projet, « Le découpage » : la structure de la vidéo finale (`outline`, chapitres non cliquables,
+ * quand la vidéo entière n'est pas hébergée) et ses images clés (`frames`), en bande de film.
+ */
+import { Image } from 'astro:assets';
+import type { Project } from '../../lib/portfolio';
+import TrackLabel from '../ui/TrackLabel.astro';
+
+interface Props {
+  project: Project;
+  track: string;
+  index: string;
+}
+
+const { project: p, track, index } = Astro.props;
+const pad = (n: number): string => String(n).padStart(2, '0');
+---
+
+<section id="decoupage" class="section pst" data-chapter="Découpage">
+  <div class="wrap">
+    <header class="ps-head">
+      <TrackLabel track={track} index={index} label="Découpage" />
+      <h2 class="ps-title" data-reveal="lines">Le <span class="serif">découpage.</span></h2>
+      {
+        p.outline.length > 0 && p.duration && (
+          <p class="lead" data-reveal="fade">
+            {p.outline.length} chapitres pour {p.duration} de vidéo : chacun a sa place dans le rythme.
+          </p>
+        )
+      }
+    </header>
+
+    {
+      p.outline.length > 0 && (
+        <div class="chapters" data-reveal="fade">
+          <div class="chapters__bar" aria-hidden="true">
+            {p.outline.map((c, i) => (
+              <span style={`flex:${(c.to - c.from).toFixed(4)} 1 0`}>
+                <i data-grow data-grow-delay={(0.2 + i * 0.09).toFixed(2)} />
+              </span>
+            ))}
+          </div>
+          <ol class="chapters__list" aria-label="Chapitres de la vidéo">
+            {p.outline.map((c) => (
+              <li>
+                <span class="mono chapters__time">{c.time}</span>
+                <span>{c.label}</span>
+              </li>
+            ))}
+          </ol>
+        </div>
+      )
+    }
+
+    {
+      p.frames.length > 0 && (
+        <div class="filmstrip">
+          <p class="filmstrip__head mono" aria-hidden="true">
+            <span>Images clés</span>
+            <span class="filmstrip__count">{pad(p.frames.length)} plans</span>
+          </p>
+          <ul class="filmstrip__frames" aria-label="Images clés du montage" data-reveal="wipe" data-reveal-start="top 85%">
+            {p.frames.map((f, i) => (
+              <li>
+                <figure class="frame">
+                  <div class="frame__img">
+                    <Image
+                      src={f.image}
+                      alt={`${f.label}, à ${f.time}`}
+                      widths={[400, 640, 800]}
+                      sizes="(min-width: 64rem) 30vw, 90vw"
+                    />
+                    <span class="frame__num mono" aria-hidden="true">
+                      {pad(i + 1)}
+                    </span>
+                  </div>
+                  <figcaption>
+                    <span class="mono frame__time">{f.time}</span>
+                    <span>{f.label}</span>
+                  </figcaption>
+                </figure>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )
+    }
+  </div>
+</section>
+
+<style>
+  .pst {
+    border-top: 1px solid var(--line);
+  }
+
+  /* ── Chapitres ── */
+  .chapters {
+    margin-bottom: clamp(2.5rem, 5vw, 4rem);
+  }
+
+  .chapters__bar {
+    display: flex;
+    gap: 3px;
+    height: 6px;
+  }
+
+  .chapters__bar span {
+    position: relative;
+    border-radius: 2px;
+    background: rgb(255 255 255 / 0.1);
+    overflow: hidden;
+  }
+
+  .chapters__bar i {
+    position: absolute;
+    inset: 0;
+    background: var(--color-rec);
+  }
+
+  .chapters__list {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.6rem 1.5rem;
+    margin-top: 1.25rem;
+    color: var(--color-fog-300);
+    font-size: 0.95rem;
+  }
+
+  @media (min-width: 48rem) {
+    .chapters__list {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+  }
+
+  .chapters__list li {
+    display: flex;
+    gap: 0.6rem;
+    align-items: baseline;
+  }
+
+  .chapters__time {
+    color: var(--color-fog-400);
+    font-size: 0.66rem;
+  }
+
+  /* ── Bande de film : images clés ── */
+  .filmstrip {
+    position: relative;
+    padding: 1.6rem clamp(1rem, 2vw, 1.5rem);
+    border-radius: var(--radius-xl);
+    border: 1px solid var(--line);
+    background: var(--color-ink-900);
+  }
+
+  /* Perforations en haut et en bas */
+  .filmstrip::before,
+  .filmstrip::after {
+    content: '';
+    position: absolute;
+    left: 1.5rem;
+    right: 1.5rem;
+    height: 6px;
+    background: radial-gradient(circle, rgb(255 255 255 / 0.13) 1.6px, transparent 2.2px) 0 50% / 14px 6px repeat-x;
+    pointer-events: none;
+  }
+
+  .filmstrip::before {
+    top: 0.5rem;
+  }
+
+  .filmstrip::after {
+    bottom: 0.5rem;
+  }
+
+  .filmstrip__head {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1rem;
+    color: var(--color-fog-400);
+    font-size: 0.6rem;
+  }
+
+  .filmstrip__count {
+    color: var(--color-fog-300);
+  }
+
+  .filmstrip__frames {
+    display: grid;
+    gap: 0.75rem;
+  }
+
+  @media (min-width: 40rem) {
+    .filmstrip__frames {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+  }
+
+  .frame {
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    background: var(--color-ink-850);
+    border: 1px solid var(--line);
+    transition:
+      opacity 0.5s ease,
+      translate 0.7s var(--ease-expo),
+      border-color 0.5s ease;
+  }
+
+  .frame__img {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .frame :global(img) {
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    object-fit: cover;
+    transition: transform 1.2s var(--ease-expo);
+  }
+
+  .frame__num {
+    position: absolute;
+    top: 0.6rem;
+    left: 0.6rem;
+    padding: 0.2rem 0.45rem;
+    border-radius: 4px;
+    background: rgb(0 0 0 / 0.6);
+    color: #fff;
+    font-size: 0.55rem;
+  }
+
+  .frame figcaption {
+    display: flex;
+    gap: 0.75rem;
+    align-items: baseline;
+    padding: 0.8rem 0.95rem;
+    color: var(--color-fog-300);
+    font-size: 0.9rem;
+  }
+
+  .frame__time {
+    color: var(--color-rec-bright);
+  }
+
+  /* Survol : l'image choisie avance, les autres s'éteignent un peu */
+  @media (hover: hover) {
+    .filmstrip__frames:hover .frame {
+      opacity: 0.45;
+    }
+
+    .filmstrip__frames .frame:hover {
+      opacity: 1;
+      translate: 0 -4px;
+      border-color: var(--line-strong);
+    }
+
+    .frame:hover :global(img) {
+      transform: scale(1.06);
+    }
+  }
+</style>

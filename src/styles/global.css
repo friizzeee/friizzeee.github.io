@@ -1,0 +1,693 @@
+@import "tailwindcss";
+
+/* ═══════════════════════════════════════════════════════════════
+   DESIGN TOKENS
+   Couleurs, polices et courbes d'animation : tout se règle ici.
+   ═══════════════════════════════════════════════════════════════ */
+
+@theme inline {
+  --font-sans: var(--font-geist), ui-sans-serif, system-ui, sans-serif;
+  --font-serif: var(--font-instrument), ui-serif, Georgia, serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+@theme {
+  /* Noirs et anthracites */
+  --color-ink-950: #060607;
+  --color-ink-900: #0a0a0c;
+  --color-ink-850: #0f0f12;
+  --color-ink-800: #141418;
+  --color-ink-700: #1b1b20;
+  --color-ink-600: #26262c;
+  --color-ink-500: #34343b;
+
+  /* Gris de texte (fog-400 et plus clairs : contraste AA garanti sur fond noir) */
+  --color-fog-500: #5c5c64;
+  --color-fog-400: #8a8a93;
+  --color-fog-300: #b0b0b8;
+  --color-fog-100: #ededf0;
+
+  /* Accent rouge « REC » */
+  --color-rec: #e5162a; /* fonds (texte blanc lisible dessus) */
+  --color-rec-bright: #ff4d5a; /* texte rouge sur fond noir */
+  --color-rec-deep: #5c0812; /* lueurs */
+
+  --ease-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-quart: cubic-bezier(0.76, 0, 0.24, 1);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   BASE
+   ═══════════════════════════════════════════════════════════════ */
+
+@layer base {
+  :root {
+    color-scheme: dark;
+    --gutter: clamp(1.25rem, 4vw, 3.5rem);
+    --header-h: 4.75rem;
+    --radius-xl: 1.75rem;
+    --radius-lg: 1.25rem;
+    --radius-md: 0.875rem;
+    --radius-sm: 0.5rem;
+    --line: rgb(255 255 255 / 0.075);
+    --line-strong: rgb(255 255 255 / 0.14);
+  }
+
+  html {
+    background: var(--color-ink-950);
+    color: var(--color-fog-100);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    scroll-padding-top: var(--header-h);
+    scrollbar-color: var(--color-ink-500) var(--color-ink-950);
+    scrollbar-width: thin;
+  }
+
+  body {
+    min-height: 100svh;
+    overflow-x: clip;
+    font-size: 1rem;
+    line-height: 1.6;
+  }
+
+  ::selection {
+    background: var(--color-rec);
+    color: #fff;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-rec-bright);
+    outline-offset: 3px;
+    border-radius: 6px;
+  }
+
+  h1,
+  h2,
+  h3 {
+    text-wrap: balance;
+  }
+
+  p {
+    text-wrap: pretty;
+  }
+
+  img,
+  video {
+    display: block;
+    max-width: 100%;
+  }
+
+  [hidden] {
+    display: none !important;
+  }
+}
+
+/* Lenis (défilement fluide) */
+html.lenis,
+html.lenis body {
+  height: auto;
+}
+.lenis.lenis-smooth {
+  scroll-behavior: auto !important;
+}
+.lenis.lenis-smooth [data-lenis-prevent] {
+  overscroll-behavior: contain;
+}
+.lenis.lenis-stopped {
+  overflow: clip;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   COMPOSANTS PARTAGÉS
+   ═══════════════════════════════════════════════════════════════ */
+
+@layer components {
+  .wrap {
+    width: min(100% - 2 * var(--gutter), 92rem);
+    margin-inline: auto;
+  }
+
+  .section {
+    position: relative;
+    padding-block: clamp(5rem, 9vw, 9rem);
+  }
+
+  /* ── Typographie ───────────────────────────── */
+  .h-display {
+    font-weight: 600;
+    letter-spacing: -0.05em;
+    line-height: 0.88;
+  }
+
+  .h2 {
+    font-size: clamp(2.6rem, 6.4vw, 6.25rem);
+    font-weight: 560;
+    letter-spacing: -0.045em;
+    line-height: 0.94;
+  }
+
+  .h3 {
+    font-size: clamp(1.4rem, 2vw, 1.85rem);
+    font-weight: 560;
+    letter-spacing: -0.03em;
+    line-height: 1.1;
+  }
+
+  .serif {
+    font-family: var(--font-serif);
+    font-style: italic;
+    font-weight: 400;
+    letter-spacing: -0.015em;
+  }
+
+  /* Le serif a un œil plus petit : on le grossit légèrement dans les titres */
+  .h2 .serif,
+  .h-display .serif {
+    font-size: 1.08em;
+    line-height: 0.8;
+    padding-right: 0.04em;
+  }
+
+  .mono {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    font-weight: 500;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  .lead {
+    font-size: clamp(1.05rem, 1.25vw, 1.2rem);
+    line-height: 1.6;
+    color: var(--color-fog-300);
+    max-width: 44ch;
+  }
+
+  .text-accent {
+    color: var(--color-rec-bright);
+  }
+
+  /* ── En-tête de section : étiquette + titre + intro ── */
+  .section-head {
+    display: grid;
+    gap: 1.75rem;
+    margin-bottom: clamp(3rem, 6vw, 5rem);
+  }
+
+  .section-head .h2 {
+    max-width: 15ch;
+  }
+
+  @media (min-width: 64rem) {
+    .section-head {
+      grid-template-columns: 1fr auto;
+      align-items: end;
+      column-gap: 4rem;
+    }
+
+    .section-head > .track {
+      grid-column: 1 / -1;
+    }
+  }
+
+  /* Masque des lignes animées (SplitText) : marge pour l'italique et les jambages */
+  .rl-mask {
+    padding: 0.04em 0.12em 0.1em;
+    margin: -0.04em -0.12em -0.1em;
+  }
+
+  /* Cible d'ancre focalisée par le JS : pas de contour */
+  [tabindex="-1"]:focus {
+    outline: none;
+  }
+
+  /* ── Point REC ─────────────────────────────── */
+  .rec-dot {
+    display: inline-block;
+    flex: none;
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: 50%;
+    background: var(--color-rec);
+    box-shadow: 0 0 12px 1px rgb(229 22 42 / 0.65);
+    animation: rec-blink 1.6s steps(1, end) infinite;
+  }
+
+  /* ── Boutons ───────────────────────────────── */
+  .btn {
+    --btn-bg: transparent;
+    --btn-fg: var(--color-fog-100);
+    --btn-border: var(--line-strong);
+    --btn-icon-bg: rgb(255 255 255 / 0.08);
+    position: relative;
+    isolation: isolate;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.85rem;
+    height: 3.5rem;
+    padding-inline: 1.6rem 0.5rem;
+    border-radius: 999px;
+    border: 1px solid var(--btn-border);
+    background: var(--btn-bg);
+    color: var(--btn-fg);
+    font-size: 0.95rem;
+    font-weight: 500;
+    letter-spacing: -0.01em;
+    white-space: nowrap;
+    overflow: hidden;
+    transition:
+      color 0.5s var(--ease-expo),
+      border-color 0.5s var(--ease-expo),
+      box-shadow 0.5s var(--ease-expo),
+      scale 0.3s var(--ease-expo);
+  }
+
+  /* Remplissage circulaire qui part du point d'entrée de la souris
+     (--bx / --by posés en JS ; sans souris : depuis le bas, au centre). */
+  .btn::before {
+    content: "";
+    position: absolute;
+    left: var(--bx, 50%);
+    top: var(--by, 100%);
+    z-index: -1;
+    width: max(260%, 22rem);
+    aspect-ratio: 1;
+    border-radius: 50%;
+    background: var(--color-fog-100);
+    transform: translate(-50%, -50%) scale(0);
+    transition: transform 0.75s var(--ease-expo);
+    pointer-events: none;
+  }
+
+  .btn:hover,
+  .btn:focus-visible {
+    --btn-fg: var(--color-ink-950);
+    --btn-icon-bg: var(--color-ink-950);
+    border-color: transparent;
+  }
+
+  .btn:hover::before,
+  .btn:focus-visible::before {
+    transform: translate(-50%, -50%) scale(1);
+  }
+
+  .btn:active {
+    scale: 0.97;
+  }
+
+  .btn--primary {
+    --btn-bg: var(--color-rec);
+    --btn-fg: #fff;
+    --btn-border: transparent;
+    --btn-icon-bg: rgb(0 0 0 / 0.22);
+    box-shadow:
+      0 18px 50px -18px rgb(229 22 42 / 0.75),
+      inset 0 1px 0 rgb(255 255 255 / 0.22),
+      inset 0 -1px 0 rgb(0 0 0 / 0.18);
+  }
+
+  /* Reflet qui traverse le bouton principal au survol */
+  .btn--primary::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    border-radius: inherit;
+    background: linear-gradient(105deg, transparent 35%, rgb(255 255 255 / 0.32) 50%, transparent 65%);
+    translate: -110% 0;
+    pointer-events: none;
+  }
+
+  .btn--primary:hover::after {
+    translate: 110% 0;
+    transition: translate 1s var(--ease-expo);
+  }
+
+  .btn--primary:hover,
+  .btn--primary:focus-visible {
+    box-shadow:
+      0 22px 60px -14px rgb(229 22 42 / 0.6),
+      0 0 0 1px rgb(255 255 255 / 0.5);
+  }
+
+  .btn--lg {
+    height: 4.25rem;
+    padding-inline: 2rem 0.6rem;
+    font-size: 1.05rem;
+  }
+
+  .btn--lg .btn__icon {
+    width: 3.1rem;
+    height: 3.1rem;
+  }
+
+  .btn__label {
+    display: inline-grid;
+    overflow: hidden;
+    line-height: 1.3;
+  }
+
+  .btn__label > span {
+    grid-area: 1 / 1;
+    transition: transform 0.6s var(--ease-expo);
+  }
+
+  .btn__label > span + span {
+    transform: translateY(110%);
+  }
+
+  .btn:hover .btn__label > span:first-child,
+  .btn:focus-visible .btn__label > span:first-child {
+    transform: translateY(-110%);
+  }
+
+  .btn:hover .btn__label > span + span,
+  .btn:focus-visible .btn__label > span + span {
+    transform: translateY(0);
+  }
+
+  .btn__icon {
+    display: grid;
+    place-items: center;
+    flex: none;
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 50%;
+    background: var(--btn-icon-bg);
+    color: inherit;
+    transition:
+      transform 0.6s var(--ease-expo),
+      background-color 0.5s var(--ease-expo);
+  }
+
+  .btn__icon svg {
+    width: 1rem;
+    height: 1rem;
+  }
+
+  .btn:hover .btn__icon,
+  .btn:focus-visible .btn__icon {
+    color: #fff;
+    transform: rotate(-45deg);
+  }
+
+  .btn--primary:hover .btn__icon,
+  .btn--primary:focus-visible .btn__icon {
+    background: var(--color-rec);
+  }
+
+  .btn[data-no-rotate]:hover .btn__icon,
+  .btn[data-no-rotate]:focus-visible .btn__icon {
+    transform: none;
+  }
+
+  /* ── Cartes avec profondeur + reflet qui suit la souris ── */
+  .card {
+    position: relative;
+    isolation: isolate;
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--line);
+    background:
+      linear-gradient(180deg, rgb(255 255 255 / 0.04), rgb(255 255 255 / 0.008) 40%),
+      var(--color-ink-850);
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.05),
+      0 1px 2px rgb(0 0 0 / 0.5),
+      0 24px 48px -24px rgb(0 0 0 / 0.9),
+      0 60px 120px -60px rgb(0 0 0 / 0.8);
+  }
+
+  .card::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    border-radius: inherit;
+    background: radial-gradient(
+      520px circle at var(--mx, 50%) var(--my, -30%),
+      rgb(255 255 255 / 0.06),
+      transparent 45%
+    );
+    opacity: 0;
+    transition: opacity 0.5s var(--ease-expo);
+    pointer-events: none;
+  }
+
+  .card::after {
+    content: "";
+    position: absolute;
+    inset: -1px;
+    border-radius: inherit;
+    padding: 1px;
+    background: radial-gradient(
+      380px circle at var(--mx, 50%) var(--my, -30%),
+      rgb(255 77 90 / 0.7),
+      transparent 50%
+    );
+    -webkit-mask:
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    opacity: 0;
+    transition: opacity 0.5s var(--ease-expo);
+    pointer-events: none;
+  }
+
+  .card:hover::before,
+  .card:hover::after,
+  .card:focus-within::after {
+    opacity: 1;
+  }
+
+  /* ── Étiquettes ────────────────────────────── */
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    height: 1.9rem;
+    padding-inline: 0.8rem;
+    border-radius: 999px;
+    border: 1px solid var(--line-strong);
+    background: rgb(255 255 255 / 0.025);
+    color: var(--color-fog-300);
+    font-size: 0.8rem;
+    letter-spacing: -0.005em;
+    white-space: nowrap;
+  }
+
+  /* ── Coins de cadrage façon viseur ─────────── */
+  .corners {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+  }
+
+  .corners > i {
+    position: absolute;
+    width: 14px;
+    height: 14px;
+    border-color: rgb(255 255 255 / 0.35);
+    border-style: solid;
+    border-width: 0;
+  }
+
+  .corners > i:nth-child(1) {
+    top: 0;
+    left: 0;
+    border-top-width: 1px;
+    border-left-width: 1px;
+  }
+  .corners > i:nth-child(2) {
+    top: 0;
+    right: 0;
+    border-top-width: 1px;
+    border-right-width: 1px;
+  }
+  .corners > i:nth-child(3) {
+    bottom: 0;
+    left: 0;
+    border-bottom-width: 1px;
+    border-left-width: 1px;
+  }
+  .corners > i:nth-child(4) {
+    bottom: 0;
+    right: 0;
+    border-bottom-width: 1px;
+    border-right-width: 1px;
+  }
+
+  /* ── Motif « média hors ligne » (emplacements vides) ── */
+  .hatch {
+    background-color: var(--color-ink-900);
+    background-image: repeating-linear-gradient(
+      -45deg,
+      rgb(255 255 255 / 0.035) 0 1px,
+      transparent 1px 12px
+    );
+  }
+
+  /* ── Lien d'évitement (clavier) ────────────── */
+  .skip-link {
+    position: fixed;
+    top: 1rem;
+    left: 1rem;
+    z-index: 300;
+    padding: 0.75rem 1.25rem;
+    border-radius: 999px;
+    background: var(--color-fog-100);
+    color: var(--color-ink-950);
+    font-weight: 600;
+    transform: translateY(-200%);
+    transition: transform 0.3s var(--ease-expo);
+  }
+
+  .skip-link:focus {
+    transform: translateY(0);
+  }
+
+  /* ── Texte réservé aux lecteurs d'écran ────── */
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  /* ── En-têtes des sections d'une page projet ── */
+  .ps-head {
+    display: grid;
+    gap: 1.5rem;
+    margin-bottom: clamp(2.5rem, 5vw, 4rem);
+  }
+
+  @media (min-width: 64rem) {
+    .ps-head:has(> .lead) {
+      grid-template-columns: minmax(0, 1fr) minmax(0, 30rem);
+      align-items: end;
+      column-gap: 4rem;
+    }
+
+    .ps-head > .track {
+      grid-column: 1 / -1;
+    }
+  }
+
+  .ps-title {
+    max-width: 16ch;
+    font-size: clamp(2.3rem, 5vw, 4.5rem);
+    font-weight: 560;
+    letter-spacing: -0.045em;
+    line-height: 0.95;
+  }
+
+  .ps-title .serif {
+    font-size: 1.08em;
+    line-height: 0.8;
+    padding-right: 0.04em;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   TRANSITION CARTE → PAGE PROJET
+   L'image de la carte cliquée se transporte jusqu'à sa place dans la page
+   du projet (nom posé en JS par src/scripts/modules/cut.ts).
+   ═══════════════════════════════════════════════════════════════ */
+
+::view-transition-group(project-media) {
+  animation-duration: 0.75s;
+  animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+::view-transition-old(project-media),
+::view-transition-new(project-media) {
+  height: 100%;
+  object-fit: cover;
+  animation-duration: 0.4s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none !important;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   GRAIN DE PELLICULE
+   ═══════════════════════════════════════════════════════════════ */
+
+.grain {
+  position: fixed;
+  inset: -100px;
+  z-index: 90;
+  pointer-events: none;
+  opacity: 0.06;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 1 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  animation: grain 0.9s steps(5) infinite;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   ANIMATIONS : état initial avant que le JS prenne le relais.
+   - Uniquement si l'utilisateur accepte les animations.
+   - Si le JS échoue (classe motion-failed), tout reste visible.
+   ═══════════════════════════════════════════════════════════════ */
+
+@media (prefers-reduced-motion: no-preference) {
+  html.js:not(.motion-failed) [data-reveal],
+  html.js:not(.motion-failed) [data-hero] {
+    visibility: hidden;
+  }
+}
+
+@keyframes rec-blink {
+  0%,
+  62% {
+    opacity: 1;
+  }
+  63%,
+  100% {
+    opacity: 0.25;
+  }
+}
+
+@keyframes grain {
+  0% {
+    transform: translate(0, 0);
+  }
+  20% {
+    transform: translate(-40px, 25px);
+  }
+  40% {
+    transform: translate(30px, -45px);
+  }
+  60% {
+    transform: translate(-25px, -15px);
+  }
+  80% {
+    transform: translate(45px, 35px);
+  }
+  100% {
+    transform: translate(0, 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .rec-dot {
+    animation: none;
+  }
+}

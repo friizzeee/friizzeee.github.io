@@ -1,0 +1,532 @@
+---
+/**
+ * Page projet, « Les vidéos » : une carte par vidéo ou par partie.
+ *  - Aperçu muet au survol (à l'écran sur mobile), chargé seulement à ce moment-là.
+ *  - Chapitres : chaque ligne lance la lecture à cet instant ; le trait montre sa place dans la vidéo.
+ *  - Lecture dans le lecteur du site ; les parties s'enchaînent (même `data-group`).
+ */
+import { pad, posterOf, type Project } from '../../lib/portfolio';
+import Poster from './Poster.astro';
+import PlayTrigger from './PlayTrigger.astro';
+import TrackLabel from '../ui/TrackLabel.astro';
+import Icon from '../ui/Icon.astro';
+
+interface Props {
+  project: Project;
+  track: string;
+  index: string;
+}
+
+const { project: p, track, index } = Astro.props;
+const videos = p.playable;
+const trio = videos.length % 3 === 0;
+const sizes = trio ? '(min-width: 72rem) 30vw, 92vw' : '(min-width: 64rem) 46vw, 92vw';
+const cards = await Promise.all(videos.map(async (v) => ({ v, poster: await posterOf(p, v) })));
+const title: [string, string] = videos.length > 1 ? ['En', `${videos.length} parties.`] : ['La', 'vidéo.'];
+---
+
+<section id="videos" class="section pv" data-chapter="Vidéos">
+  <div class="wrap">
+    <header class="ps-head">
+      <TrackLabel track={track} index={index} label="Vidéos" />
+      <h2 class="ps-title" data-reveal="lines">{title[0]} <span class="serif">{title[1]}</span></h2>
+    </header>
+
+    <ol class="pv__grid" data-layout={trio ? 'trio' : undefined}>
+      {
+        cards.map(({ v, poster }) => (
+          <li class="pv__cell">
+            <article
+              class="mv card"
+              data-preview-card={v.preview ? '' : undefined}
+              data-tilt="2.5"
+              data-reveal="clip"
+              data-reveal-start="top 86%"
+            >
+              <div class="mv__media" data-follow-area>
+                <Poster
+                  source={poster}
+                  alt={`Image du montage : ${v.title}`}
+                  sizes={sizes}
+                  widths={[480, 800, 1280]}
+                  class="mv__poster"
+                />
+                {v.preview && (
+                  <video class="mv__preview" muted loop playsinline preload="none" data-src={v.preview} aria-hidden="true" />
+                )}
+                <span class="mv__shade" aria-hidden="true" />
+                <span class="corners mv__corners" aria-hidden="true">
+                  <i />
+                  <i />
+                  <i />
+                  <i />
+                </span>
+                <span class="mv__tag mv__tag--index mono" aria-hidden="true">
+                  <span class="rec-dot" />
+                  {v.index} / {pad(videos.length)}
+                </span>
+                {v.duration && (
+                  <span class="mv__tag mv__tag--length mono" aria-hidden="true">
+                    {v.kind === 'youtube' ? `YouTube · ${v.duration}` : v.duration}
+                  </span>
+                )}
+                <span class="mv__play" aria-hidden="true" data-follow>
+                  <Icon name="play" />
+                </span>
+                {v.preview && (
+                  <span class="mv__progress" aria-hidden="true">
+                    <i data-preview-progress />
+                  </span>
+                )}
+              </div>
+
+              <div class="mv__info">
+                <h3 class="mv__title">
+                  <PlayTrigger project={p} video={v} anchor class="mv__hit">
+                    {v.title}
+                  </PlayTrigger>
+                </h3>
+                {v.description && <p class="mv__desc">{v.description}</p>}
+                {v.chapters.length > 0 && (
+                  <ol class="mv__chapters" aria-label={`Chapitres : ${v.title}`}>
+                    {v.chapters.map((ch, n) => (
+                      <li>
+                        <button type="button" class="mv__chapter" data-play-at={ch.seconds} data-play-for={v.anchor}>
+                          <span class="sr-only">Lire à partir de </span>
+                          <span class="mono mv__chapter-time">{ch.time}</span>
+                          <span class="mv__chapter-label">{ch.label}</span>
+                          <span class="mv__chapter-go" aria-hidden="true">
+                            <Icon name="play" />
+                          </span>
+                          <span
+                            class="mv__chapter-span"
+                            aria-hidden="true"
+                            style={`left:${(ch.from * 100).toFixed(2)}%;width:${((ch.to - ch.from) * 100).toFixed(2)}%`}
+                          >
+                            <i data-grow data-grow-delay={(0.3 + n * 0.12).toFixed(2)} />
+                          </span>
+                        </button>
+                      </li>
+                    ))}
+                  </ol>
+                )}
+              </div>
+            </article>
+          </li>
+        ))
+      }
+    </ol>
+  </div>
+</section>
+
+<style>
+  .pv {
+    border-top: 1px solid var(--line);
+  }
+
+  /* ── Grille : deux colonnes en quinconce, ou trois colonnes pour une série en trois parties ── */
+  .pv__grid {
+    display: grid;
+    gap: 1.25rem;
+    align-items: start;
+  }
+
+  @media (min-width: 64rem) {
+    .pv__grid:not([data-layout='trio']) {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .pv__grid:not([data-layout='trio']) .pv__cell:nth-child(even) {
+      margin-top: 4.5rem;
+    }
+  }
+
+  @media (min-width: 48rem) {
+    .pv__grid[data-layout='trio'] {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .pv__grid[data-layout='trio'] .pv__cell:nth-child(3n + 1) {
+      grid-column: 1 / -1;
+    }
+  }
+
+  /* Tablette : sous la grande vidéo, le texte à gauche et les chapitres à droite */
+  @media (min-width: 48rem) and (max-width: 71.99rem) {
+    .pv__grid[data-layout='trio'] .pv__cell:nth-child(3n + 1) .mv__info {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      grid-template-areas:
+        'title chapters'
+        'desc chapters';
+      column-gap: clamp(1.5rem, 4vw, 3rem);
+      align-items: start;
+    }
+
+    .pv__grid[data-layout='trio'] .pv__cell:nth-child(3n + 1) .mv__title {
+      grid-area: title;
+    }
+
+    .pv__grid[data-layout='trio'] .pv__cell:nth-child(3n + 1) .mv__desc {
+      grid-area: desc;
+    }
+
+    .pv__grid[data-layout='trio'] .pv__cell:nth-child(3n + 1) .mv__chapters {
+      grid-area: chapters;
+    }
+  }
+
+  @media (min-width: 72rem) {
+    .pv__grid[data-layout='trio'] {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .pv__grid[data-layout='trio'] .pv__cell:nth-child(3n + 1) {
+      grid-column: auto;
+    }
+
+    .pv__grid[data-layout='trio'] .pv__cell:nth-child(3n + 2) {
+      margin-top: 4.5rem;
+    }
+
+    .pv__grid[data-layout='trio'] .mv__title {
+      font-size: clamp(1.25rem, 1.55vw, 1.5rem);
+    }
+  }
+
+  /* ── Carte vidéo ────────────────────────────── */
+  .mv {
+    position: relative;
+    overflow: hidden;
+    border-radius: var(--radius-xl);
+    transition: border-color 0.5s ease;
+  }
+
+  .mv:hover {
+    border-color: var(--line-strong);
+  }
+
+  .mv__media {
+    position: relative;
+    aspect-ratio: 16 / 9;
+    overflow: hidden;
+    background: var(--color-ink-800);
+  }
+
+  .mv__media :global(.mv__poster),
+  .mv__preview {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition:
+      scale 1.4s var(--ease-expo),
+      opacity 0.6s ease;
+  }
+
+  .mv__media :global(.mv__poster) {
+    outline: 1px solid rgb(255 255 255 / 0.1);
+    outline-offset: -1px;
+  }
+
+  .mv__preview {
+    opacity: 0;
+  }
+
+  .mv:global(.is-previewing) .mv__preview {
+    opacity: 1;
+  }
+
+  .mv:hover .mv__media :global(.mv__poster),
+  .mv:focus-within .mv__media :global(.mv__poster),
+  .mv:hover .mv__preview {
+    scale: 1.05;
+  }
+
+  .mv__shade {
+    position: absolute;
+    inset: 0;
+    background:
+      linear-gradient(180deg, rgb(6 6 7 / 0.5), transparent 28%),
+      radial-gradient(circle at 50% 50%, rgb(6 6 7 / 0.42), transparent 55%);
+    transition: opacity 0.6s ease;
+  }
+
+  .mv:hover .mv__shade {
+    opacity: 0.55;
+  }
+
+  .mv:global(.is-previewing) .mv__shade {
+    opacity: 0.35;
+  }
+
+  .mv__progress {
+    position: absolute;
+    inset: auto 0 0;
+    height: 3px;
+    background: rgb(255 255 255 / 0.12);
+    opacity: 0;
+    transition: opacity 0.4s ease;
+    pointer-events: none;
+  }
+
+  .mv__progress i {
+    position: absolute;
+    inset: 0;
+    background: var(--color-rec);
+    transform: scaleX(var(--vp, 0));
+    transform-origin: left;
+  }
+
+  .mv:global(.is-previewing) .mv__progress {
+    opacity: 1;
+  }
+
+  .mv__corners {
+    inset: 1rem;
+  }
+
+  .mv__corners :global(i) {
+    border-color: rgb(255 255 255 / 0.55);
+    transition: translate 0.7s var(--ease-expo);
+  }
+
+  .mv:hover .mv__corners :global(i:nth-child(1)) {
+    translate: 6px 6px;
+  }
+  .mv:hover .mv__corners :global(i:nth-child(2)) {
+    translate: -6px 6px;
+  }
+  .mv:hover .mv__corners :global(i:nth-child(3)) {
+    translate: 6px -6px;
+  }
+  .mv:hover .mv__corners :global(i:nth-child(4)) {
+    translate: -6px -6px;
+  }
+
+  /* Étiquettes en bas de l'image : le haut reste libre pour ce que la vidéo affiche déjà */
+  .mv__tag {
+    position: absolute;
+    bottom: 1.75rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.35rem 0.6rem;
+    border-radius: 6px;
+    background: rgb(0 0 0 / 0.72);
+    color: #fff;
+    font-size: 0.6rem;
+  }
+
+  .mv__tag--index {
+    left: 1.75rem;
+  }
+
+  .mv__tag--length {
+    right: 1.75rem;
+  }
+
+  .mv__play {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    display: grid;
+    place-items: center;
+    width: clamp(3.75rem, 6vw, 5rem);
+    aspect-ratio: 1;
+    border-radius: 50%;
+    background: var(--color-rec);
+    color: #fff;
+    translate: -50% -50%;
+    box-shadow:
+      0 14px 34px -10px rgb(229 22 42 / 0.9),
+      inset 0 1px 0 rgb(255 255 255 / 0.3);
+    transition: scale 0.6s var(--ease-expo);
+  }
+
+  .mv__play::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    border: 1px solid rgb(255 77 90 / 0.7);
+    animation: mv-ring 2.6s ease-out infinite;
+  }
+
+  .mv__play :global(svg) {
+    width: 34%;
+    height: 34%;
+    margin-left: 6%;
+  }
+
+  .mv:hover .mv__play,
+  .mv:focus-within .mv__play {
+    scale: 1.12;
+  }
+
+  .mv__info {
+    display: grid;
+    gap: 0.8rem;
+    padding: clamp(1.25rem, 2.4vw, 1.9rem);
+  }
+
+  .mv__title {
+    font-size: clamp(1.35rem, 2.1vw, 1.8rem);
+    font-weight: 560;
+    letter-spacing: -0.03em;
+    line-height: 1.12;
+    text-wrap: balance;
+  }
+
+  .mv__info :global(.mv__hit) {
+    text-align: left;
+    cursor: pointer;
+  }
+
+  /* Toute la carte lance la lecture */
+  .mv__info :global(.mv__hit)::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+  }
+
+  .mv__info :global(.mv__hit:focus-visible) {
+    outline: none;
+  }
+
+  .mv:has(:global(.mv__hit:focus-visible)) {
+    outline: 2px solid var(--color-rec-bright);
+    outline-offset: 3px;
+  }
+
+  .mv__desc {
+    max-width: 52ch;
+    color: var(--color-fog-300);
+    font-size: 0.97rem;
+  }
+
+  /* ── Chapitres : une ligne cliquable par chapitre ; le trait occupe sa place dans la vidéo ── */
+  .mv__chapters {
+    display: grid;
+    margin-top: 0.3rem;
+    border-top: 1px solid var(--line);
+  }
+
+  .mv__chapter {
+    position: relative;
+    z-index: 3; /* au-dessus de la zone cliquable de la carte */
+    display: grid;
+    grid-template-columns: 2.9rem minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 0.75rem;
+    width: 100%;
+    min-height: 2.75rem;
+    padding-block: 0.55rem;
+    border-bottom: 1px solid var(--line);
+    color: var(--color-fog-300);
+    font-size: 0.95rem;
+    line-height: 1.3;
+    text-align: left;
+    cursor: pointer;
+    transition: color 0.4s ease;
+  }
+
+  .mv__chapter-time {
+    color: var(--color-fog-400);
+    font-size: 0.62rem;
+    font-variant-numeric: tabular-nums;
+    transition: color 0.4s ease;
+  }
+
+  .mv__chapter-go {
+    display: grid;
+    place-items: center;
+    width: 1.6rem;
+    height: 1.6rem;
+    border-radius: 50%;
+    border: 1px solid var(--line-strong);
+    color: var(--color-fog-400);
+    transition:
+      background-color 0.4s var(--ease-expo),
+      border-color 0.4s ease,
+      color 0.4s ease,
+      scale 0.5s var(--ease-expo);
+  }
+
+  .mv__chapter-go :global(svg) {
+    width: 0.6rem;
+    height: 0.6rem;
+    margin-left: 1px;
+  }
+
+  .mv__chapter-span {
+    position: absolute;
+    bottom: -1px;
+    height: 2px;
+    pointer-events: none;
+  }
+
+  .mv__chapter-span i {
+    position: absolute;
+    inset: 0;
+    border-radius: 1px;
+    background: rgb(255 255 255 / 0.34);
+    transition:
+      background-color 0.4s ease,
+      box-shadow 0.4s ease;
+  }
+
+  .mv__chapter:hover,
+  .mv__chapter:focus-visible {
+    color: var(--color-fog-100);
+  }
+
+  .mv__chapter:hover .mv__chapter-time,
+  .mv__chapter:focus-visible .mv__chapter-time {
+    color: var(--color-rec-bright);
+  }
+
+  .mv__chapter:hover .mv__chapter-go,
+  .mv__chapter:focus-visible .mv__chapter-go {
+    background: var(--color-rec);
+    border-color: transparent;
+    color: #fff;
+    scale: 1.08;
+  }
+
+  .mv__chapter:hover .mv__chapter-span i,
+  .mv__chapter:focus-visible .mv__chapter-span i {
+    background: var(--color-rec);
+    box-shadow: 0 0 12px rgb(229 22 42 / 0.85);
+  }
+
+  .mv__chapter:focus-visible {
+    outline: 2px solid var(--color-rec-bright);
+    outline-offset: 2px;
+    border-radius: 6px;
+  }
+
+  .mv__chapter:active .mv__chapter-go {
+    scale: 0.94;
+  }
+
+  @keyframes mv-ring {
+    0% {
+      opacity: 0.9;
+      scale: 1;
+    }
+    80%,
+    100% {
+      opacity: 0;
+      scale: 1.9;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .mv__play::before {
+      animation: none;
+      opacity: 0;
+    }
+  }
+</style>

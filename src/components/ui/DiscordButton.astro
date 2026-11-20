@@ -1,0 +1,56 @@
+---
+/**
+ * Bouton principal « Me contacter sur Discord ».
+ * Le lien vient de src/config/site.ts (discord.url).
+ */
+import Button from './Button.astro';
+import { discordHref, isDiscordConfigured } from '../../config/site';
+
+interface Props {
+  label?: string;
+  size?: 'md' | 'lg';
+  variant?: 'primary' | 'ghost';
+  class?: string;
+}
+
+const { label = 'Me contacter sur Discord', size = 'md', variant = 'primary', class: className } = Astro.props;
+---
+
+<span class:list={['discord-btn', className]}>
+  <Button
+    href={discordHref}
+    variant={variant}
+    size={size}
+    icon="discord"
+    rotateIcon={false}
+    external={isDiscordConfigured}
+    data-discord-link
+  >
+    {label}
+  </Button>
+  {
+    import.meta.env.DEV && !isDiscordConfigured && (
+      <span class="discord-btn__warn mono" role="note">
+        ⚠ Lien Discord à renseigner dans src/config/site.ts
+      </span>
+    )
+  }
+</span>
+
+<style>
+  .discord-btn {
+    position: relative;
+    display: inline-flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+
+  .discord-btn__warn {
+    padding: 0.3rem 0.6rem;
+    border-radius: 6px;
+    background: #ffd84d;
+    color: #111;
+    font-size: 0.62rem;
+  }
+</style>

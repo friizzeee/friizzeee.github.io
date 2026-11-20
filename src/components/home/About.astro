@@ -1,0 +1,472 @@
+---
+import { Image } from 'astro:assets';
+import { about } from '../../data/about';
+import { site } from '../../config/site';
+import { projectsIn } from '../../lib/portfolio';
+import TrackLabel from '../ui/TrackLabel.astro';
+import Icon from '../ui/Icon.astro';
+
+/** Le renvoi vers le portfolio n'apparaît que si un projet crypto / trading est réellement en ligne. */
+const proof = projectsIn('crypto-trading')[0] ?? null;
+const proofCategory = proof?.categories.find((c) => c.id === 'crypto-trading')?.label ?? '';
+
+/* Visuel décoratif « montage × marchés » : une forme d'onde audio
+   qui se prolonge en courbe. Aucune donnée réelle, purement graphique. */
+const W = 400;
+const H = 260;
+const waveBars = Array.from({ length: 34 }, (_, i) => {
+  const x = 18 + i * 5.6;
+  const h = 14 + Math.abs(Math.sin(i * 0.9) * Math.cos(i * 0.37)) * 70;
+  return { x, y: H / 2 - h / 2, h };
+});
+const curvePoints = Array.from({ length: 24 }, (_, i) => {
+  const x = 210 + i * 7.8;
+  const y = H / 2 - i * 3.4 + Math.sin(i * 1.3) * 12;
+  return `${x.toFixed(1)},${y.toFixed(1)}`;
+});
+const curve = `M210,${H / 2} L${curvePoints.join(' L')}`;
+const endY = H / 2 - 23 * 3.4 + Math.sin(23 * 1.3) * 12;
+
+const [intro, ...rest] = about.paragraphs;
+---
+
+<section id="about" class="section about" data-chapter="À propos">
+  <div class="wrap about__grid">
+    <div class="about__visual-col">
+      <div class="about__visual card" data-reveal="clip">
+        {
+          about.portrait ? (
+            <Image
+              src={about.portrait}
+              alt={`Portrait de ${site.name}`}
+              widths={[480, 720, 960]}
+              sizes="(min-width: 64rem) 40vw, 100vw"
+              class="about__portrait"
+              data-parallax="6"
+            />
+          ) : (
+            <div class="about__art" aria-hidden="true">
+              <span class="about__monogram serif" data-parallax="-9">{site.name.charAt(0)}</span>
+              <svg viewBox={`0 0 ${W} ${H}`} class="about__svg" preserveAspectRatio="xMidYMid meet">
+                <line x1="0" x2={W} y1={H / 2} y2={H / 2} class="about__axis" />
+                <g data-reveal="bars" data-reveal-start="top 80%">
+                  {waveBars.map((b) => (
+                    <rect x={b.x} y={b.y} width="3" height={b.h} rx="1.5" class="about__bar" />
+                  ))}
+                </g>
+                <path d={curve} class="about__curve" pathLength="1" data-draw data-draw-delay="0.55" />
+                <circle cx="389.4" cy={endY} r="5" class="about__point" />
+                <circle cx="389.4" cy={endY} r="5" class="about__ping" />
+              </svg>
+            </div>
+          )
+        }
+        <div class="corners" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+        <span class="about__tag about__tag--tl mono" aria-hidden="true">A1 — Profil</span>
+        <span class="about__tag about__tag--tr mono" aria-hidden="true">Montage × Marchés</span>
+
+        {
+          about.profile.length > 0 && (
+            <dl class="inspector" data-reveal="stagger" data-reveal-delay="0.3">
+              {about.profile.map((row) => (
+                <div class="inspector__row">
+                  <dt class="mono">{row.label}</dt>
+                  <dd>{row.value}</dd>
+                </div>
+              ))}
+            </dl>
+          )
+        }
+      </div>
+    </div>
+
+    <div class="about__text">
+      <TrackLabel track="A1" index="03" label="À propos" />
+      <h2 class="h2" data-reveal="lines">
+        {about.title[0]} <span class="serif">{about.title[1]}</span>
+      </h2>
+      <div class="about__copy">
+        {intro && <p class="about__intro" data-reveal="scrub">{intro}</p>}
+        {rest.length > 0 && (
+          <div class="about__rest" data-reveal="stagger">
+            {rest.map((p) => <p>{p}</p>)}
+          </div>
+        )}
+      </div>
+      {
+        about.expertise.length > 0 && (
+          <ol class="about__rows" aria-label="Domaines que je connais" data-reveal="wipe" data-reveal-start="top 85%">
+            {about.expertise.map((e, i) => (
+              <li class="xrow">
+                <span class="xrow__idx mono" aria-hidden="true">
+                  A{i + 1}
+                </span>
+                <h3 class="xrow__title">{e.title}</h3>
+                <p class="xrow__text">{e.text}</p>
+              </li>
+            ))}
+          </ol>
+        )
+      }
+      {
+        proof && (
+          <a href={proof.href} class="about__proof" data-reveal="fade" data-cut-label={proof.title}>
+            <span>
+              En pratique : {proof.editType.toLowerCase()} pour {proof.creator}, {proofCategory}
+            </span>
+            <Icon name="arrow" />
+          </a>
+        )
+      }
+      <ul class="about__interests" aria-label="Centres d’intérêt" data-reveal="stagger">
+        {about.interests.map((i) => <li class="chip">{i}</li>)}
+      </ul>
+      <p class="about__note" data-reveal="fade">{about.note}</p>
+    </div>
+  </div>
+</section>
+
+<style>
+  .about {
+    background:
+      radial-gradient(ellipse 60% 50% at 15% 50%, rgb(229 22 42 / 0.07), transparent),
+      var(--color-ink-950);
+  }
+
+  .about__grid {
+    display: grid;
+    gap: clamp(3rem, 6vw, 6rem);
+  }
+
+  @media (min-width: 64rem) {
+    .about__grid {
+      grid-template-columns: 5fr 6fr;
+      align-items: start;
+    }
+
+    /* Le visuel reste à l'écran pendant qu'on lit le parcours */
+    .about__visual-col {
+      position: sticky;
+      top: calc(var(--header-h) + 1.5rem);
+    }
+  }
+
+  .about__visual {
+    position: relative;
+    aspect-ratio: 4 / 5;
+    overflow: hidden;
+    border-radius: var(--radius-xl);
+  }
+
+  @media (max-width: 30rem) {
+    .about__visual {
+      aspect-ratio: 3 / 4;
+    }
+  }
+
+  .about__visual :global(.about__portrait) {
+    position: absolute;
+    inset: -8% 0;
+    width: 100%;
+    height: 116%;
+    object-fit: cover;
+    filter: grayscale(1) contrast(1.05);
+    transition: filter 1s ease;
+  }
+
+  .about__visual:hover :global(.about__portrait) {
+    filter: grayscale(0);
+  }
+
+  .about__art {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: start center;
+    padding-top: 22%;
+    background:
+      radial-gradient(circle at 70% 30%, rgb(229 22 42 / 0.16), transparent 55%),
+      linear-gradient(180deg, var(--color-ink-800), var(--color-ink-900));
+  }
+
+  .about__monogram {
+    position: absolute;
+    top: -4%;
+    right: 2%;
+    font-size: clamp(16rem, 34vw, 30rem);
+    line-height: 1;
+    color: rgb(255 255 255 / 0.035);
+    user-select: none;
+  }
+
+  .about__svg {
+    position: relative;
+    width: 86%;
+    overflow: visible;
+  }
+
+  .about__axis {
+    stroke: rgb(255 255 255 / 0.08);
+    stroke-dasharray: 2 6;
+  }
+
+  .about__bar {
+    fill: rgb(255 255 255 / 0.22);
+  }
+
+  .about__curve {
+    fill: none;
+    stroke: var(--color-rec);
+    stroke-width: 2.5;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    filter: drop-shadow(0 0 8px rgb(229 22 42 / 0.6));
+  }
+
+  .about__point {
+    fill: var(--color-rec);
+    filter: drop-shadow(0 0 10px rgb(229 22 42 / 0.9));
+  }
+
+  /* Onde qui se propage depuis le dernier point de la courbe */
+  .about__ping {
+    fill: none;
+    stroke: var(--color-rec-bright);
+    stroke-width: 1.5;
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: ping 2.6s ease-out infinite;
+  }
+
+  .about__visual .corners {
+    inset: 1.1rem;
+  }
+
+  .about__tag {
+    position: absolute;
+    color: var(--color-fog-400);
+    font-size: 0.6rem;
+  }
+
+  .about__tag--tl {
+    top: 1.6rem;
+    left: 1.7rem;
+  }
+
+  .about__tag--tr {
+    top: 1.6rem;
+    right: 1.7rem;
+  }
+
+  /* ── Inspecteur de clip (comme le panneau de propriétés d'un logiciel de montage) ── */
+  .inspector {
+    position: absolute;
+    left: 1.1rem;
+    right: 1.1rem;
+    bottom: 1.1rem;
+    display: grid;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--line-strong);
+    background: rgb(10 10 12 / 0.62);
+    backdrop-filter: blur(16px) saturate(140%);
+    -webkit-backdrop-filter: blur(16px) saturate(140%);
+    box-shadow: 0 24px 50px -24px rgb(0 0 0 / 0.9);
+    overflow: hidden;
+  }
+
+  .inspector__row {
+    display: grid;
+    grid-template-columns: 6.25rem 1fr;
+    gap: 1rem;
+    align-items: baseline;
+    padding: 0.7rem 1rem;
+  }
+
+  .inspector__row + .inspector__row {
+    border-top: 1px solid var(--line);
+  }
+
+  .inspector dt {
+    color: var(--color-fog-400);
+    font-size: 0.58rem;
+  }
+
+  .inspector dd {
+    color: var(--color-fog-100);
+    font-size: 0.88rem;
+    letter-spacing: -0.01em;
+  }
+
+  .inspector__row:first-child dd {
+    color: var(--color-rec-bright);
+  }
+
+  /* ── Texte ──────────────────────────────────── */
+  .about__text {
+    display: grid;
+    gap: 1.75rem;
+  }
+
+  .about__text .h2 {
+    max-width: 13ch;
+  }
+
+  .about__copy {
+    display: grid;
+    gap: 1.1rem;
+    max-width: 54ch;
+    color: var(--color-fog-300);
+    font-size: 1.05rem;
+  }
+
+  .about__intro {
+    color: var(--color-fog-100);
+    font-size: clamp(1.2rem, 1.6vw, 1.4rem);
+    line-height: 1.5;
+    letter-spacing: -0.015em;
+  }
+
+  .about__rest {
+    display: grid;
+    gap: 1.1rem;
+  }
+
+  .about__interests {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .about__note {
+    display: flex;
+    gap: 0.8rem;
+    color: var(--color-fog-400);
+    font-size: 0.92rem;
+    max-width: 54ch;
+  }
+
+  .about__note::before {
+    content: '';
+    flex: none;
+    width: 0.4rem;
+    height: 0.4rem;
+    margin-top: 0.6em;
+    border-radius: 50%;
+    background: var(--color-rec);
+  }
+
+  /* ── Les trois domaines : des pistes qu'on survole ── */
+  .about__rows {
+    display: grid;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .xrow {
+    position: relative;
+    display: grid;
+    grid-template-columns: 2.5rem 1fr;
+    gap: 0.5rem 1rem;
+    align-items: baseline;
+    padding-block: 1.35rem;
+    border-top: 1px solid var(--line);
+  }
+
+  /* Tête de lecture qui parcourt la ligne au survol */
+  .xrow::before {
+    content: '';
+    position: absolute;
+    inset: -1px 0 auto;
+    height: 1px;
+    background: linear-gradient(90deg, var(--color-rec), rgb(255 77 90 / 0.15));
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 0.9s var(--ease-expo);
+  }
+
+  .xrow:hover::before {
+    transform: scaleX(1);
+  }
+
+  .xrow__idx {
+    color: var(--color-fog-400);
+    font-size: 0.6rem;
+    transition: color 0.4s ease;
+  }
+
+  .xrow:hover .xrow__idx {
+    color: var(--color-rec-bright);
+  }
+
+  .xrow__title {
+    font-size: clamp(1.5rem, 2.2vw, 1.9rem);
+    font-weight: 560;
+    letter-spacing: -0.035em;
+    line-height: 1.05;
+    transition: translate 0.7s var(--ease-expo);
+  }
+
+  .xrow:hover .xrow__title {
+    translate: 0.35rem 0;
+  }
+
+  .xrow__text {
+    grid-column: 2;
+    max-width: 50ch;
+    color: var(--color-fog-300);
+    font-size: 0.98rem;
+  }
+
+  @media (min-width: 40rem) {
+    .xrow {
+      grid-template-columns: 2.5rem 8.5rem 1fr;
+    }
+
+    .xrow__text {
+      grid-column: 3;
+    }
+  }
+
+  .about__proof {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.7rem;
+    justify-self: start;
+    min-height: 2.75rem;
+    color: var(--color-fog-100);
+    font-weight: 500;
+    letter-spacing: -0.01em;
+    text-decoration: underline;
+    text-decoration-color: rgb(255 77 90 / 0.6);
+    text-decoration-thickness: 1px;
+    text-underline-offset: 0.35em;
+    transition: text-decoration-color 0.3s ease;
+  }
+
+  .about__proof :global(svg) {
+    flex: none;
+    width: 1rem;
+    height: 1rem;
+    color: var(--color-rec-bright);
+    transition: transform 0.6s var(--ease-expo);
+  }
+
+  .about__proof:hover {
+    text-decoration-color: var(--color-rec-bright);
+  }
+
+  .about__proof:hover :global(svg) {
+    transform: translateX(0.3rem);
+  }
+
+  @keyframes ping {
+    0% {
+      opacity: 0.9;
+      transform: scale(1);
+    }
+    80%,
+    100% {
+      opacity: 0;
+      transform: scale(3.2);
+    }
+  }
+</style>

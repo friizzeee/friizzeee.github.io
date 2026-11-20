@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+
+# Pensez à remplacer l'adresse ci-dessous par celle de votre site (voir astro.config.mjs).
+Sitemap: https://friizzeee.github.io/sitemap-index.xml

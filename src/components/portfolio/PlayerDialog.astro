@@ -1,0 +1,941 @@
+---
+/**
+ * Lecteur plein écran partagé par toutes les vidéos du portfolio.
+ * Rempli à l'ouverture, vidé à la fermeture (logique : src/scripts/modules/player.ts).
+ *
+ * - Fichier vidéo : commandes du site (lecture, barre découpée par chapitres, son, 720p / 480p,
+ *   plein écran), raccourcis clavier, états chargement / erreur / fin de lecture.
+ * - Série en plusieurs parties : bandeau des parties sous l'image, bouton « partie suivante » à la fin.
+ * - YouTube : lecteur YouTube sans cookies, chargé au clic, avec ses propres commandes.
+ */
+import Icon from '../ui/Icon.astro';
+---
+
+<dialog class="player" aria-label="Lecteur vidéo" data-player>
+  <div class="player__panel" data-player-panel>
+    <div class="player__bar">
+      <div class="player__heading">
+        <p class="mono player__meta" data-player-meta></p>
+        <p class="player__title" data-player-title></p>
+      </div>
+      <button type="button" class="player__close" data-player-close>
+        <span class="mono">Fermer</span>
+        <Icon name="close" />
+      </button>
+    </div>
+
+    <div class="player__stage" data-player-stage>
+      <div class="player__screen" data-player-screen></div>
+
+      <div class="pc is-paused" data-pc hidden>
+        <div class="pc__surface" aria-hidden="true" data-pc-surface></div>
+
+        <span class="pc__big" aria-hidden="true">
+          <Icon name="play" />
+        </span>
+
+        <p class="pc__state mono" role="status">
+          <span class="rec-dot" aria-hidden="true"></span>
+          <span data-pc-state></span>
+        </p>
+
+        <div class="pc__over" data-pc-end hidden>
+          <p class="pc__over-title" data-pc-end-title></p>
+          <div class="pc__actions">
+            <button type="button" class="pc__action" data-pc-replay>
+              <Icon name="replay" />
+              Revoir
+            </button>
+            <button type="button" class="pc__action pc__action--primary" data-pc-next hidden>
+              <span data-pc-next-label></span>
+              <Icon name="next" />
+            </button>
+          </div>
+        </div>
+
+        <div class="pc__over" role="alert" data-pc-error hidden>
+          <p class="pc__over-title">La vidéo ne se charge pas.</p>
+          <p class="pc__over-text">Vérifiez votre connexion, puis relancez la lecture.</p>
+          <div class="pc__actions">
+            <button type="button" class="pc__action pc__action--primary" data-pc-retry>
+              <Icon name="replay" />
+              Réessayer
+            </button>
+            <button type="button" class="pc__action" data-pc-lighter hidden>Passer en 480p</button>
+          </div>
+        </div>
+
+        <div class="pc__bottom" data-pc-bottom>
+          <div class="pc__seek" data-pc-seek>
+            <div class="pc__track">
+              <i class="pc__buffer"></i>
+              <i class="pc__fill"></i>
+              <span class="pc__marks" data-pc-marks></span>
+            </div>
+            <i class="pc__knob"></i>
+            <span class="pc__tip mono" aria-hidden="true" data-pc-tip></span>
+            <input
+              class="pc__range"
+              type="range"
+              min="0"
+              max="0"
+              step="5"
+              value="0"
+              aria-label="Position dans la vidéo"
+              data-pc-range
+            />
+          </div>
+
+          <div class="pc__row">
+            <button type="button" class="pc__btn" aria-label="Lecture" data-pc-toggle>
+              <span data-icon="play"><Icon name="play" /></span>
+              <span data-icon="pause"><Icon name="pause" /></span>
+            </button>
+            <button type="button" class="pc__btn" aria-label="Couper le son" aria-pressed="false" data-pc-mute>
+              <span data-icon="volume"><Icon name="volume" /></span>
+              <span data-icon="mute"><Icon name="mute" /></span>
+            </button>
+            <input class="pc__vol" type="range" min="0" max="1" step="0.05" value="1" aria-label="Volume" data-pc-volume />
+            <p class="pc__time mono">
+              <span data-pc-current>0:00</span>
+              <span class="pc__time-total"> / <span data-pc-total>0:00</span></span>
+            </p>
+            <p class="pc__chapter" data-pc-chapter></p>
+            <span class="pc__gap"></span>
+            <button type="button" class="pc__btn pc__btn--text" data-pc-quality hidden>
+              <span class="pc__pill mono" data-pc-quality-label>720p</span>
+            </button>
+            <button type="button" class="pc__btn" aria-label="Plein écran" aria-pressed="false" data-pc-full>
+              <span data-icon="expand"><Icon name="expand" /></span>
+              <span data-icon="compress"><Icon name="compress" /></span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="player__parts" role="group" aria-label="Parties de la série" data-player-parts hidden></div>
+
+    <div class="player__foot">
+      <p class="player__credits" data-player-credits hidden></p>
+      <a class="player__link mono" target="_blank" rel="noopener noreferrer" data-player-link hidden>
+        Ouvrir sur YouTube
+        <Icon name="arrow" />
+      </a>
+    </div>
+  </div>
+</dialog>
+
+<style>
+  .player {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    max-width: none;
+    height: 100dvh;
+    max-height: none;
+    margin: 0;
+    padding: clamp(1rem, 3vw, 2.5rem);
+    border: 0;
+    background: rgb(6 6 7 / 0.92);
+    color: var(--color-fog-100);
+    overflow: auto;
+  }
+
+  .player[open] {
+    display: grid;
+    place-items: center;
+  }
+
+  .player::backdrop {
+    background: transparent;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+
+  /* La largeur suit la hauteur disponible : l'image, son titre et ses crédits tiennent sans défiler
+     (14rem = marges + titre + crédits ; 18.5rem quand le bandeau des parties s'ajoute). */
+  .player__panel {
+    display: grid;
+    gap: 1rem;
+    width: min(100%, 76rem, calc((100dvh - 14rem) * 16 / 9));
+  }
+
+  .player.has-parts .player__panel {
+    width: min(100%, 76rem, calc((100dvh - 18.5rem) * 16 / 9));
+  }
+
+  .player[data-ratio='9:16'] .player__panel {
+    width: min(100%, 26rem, calc((100dvh - 14rem) * 9 / 16));
+  }
+
+  .player__bar {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 1rem;
+  }
+
+  .player__heading {
+    min-width: 0;
+  }
+
+  .player__meta {
+    color: var(--color-fog-400);
+  }
+
+  .player__title {
+    font-size: clamp(1.2rem, 2.2vw, 1.7rem);
+    font-weight: 560;
+    letter-spacing: -0.03em;
+  }
+
+  .player__close {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    gap: 0.6rem;
+    height: 2.75rem;
+    padding-inline: 1rem 0.8rem;
+    border-radius: 999px;
+    border: 1px solid var(--line-strong);
+    color: var(--color-fog-100);
+    cursor: pointer;
+    transition:
+      background-color 0.3s ease,
+      color 0.3s ease;
+  }
+
+  .player__close :global(svg) {
+    width: 1rem;
+    height: 1rem;
+  }
+
+  .player__close:hover {
+    background: var(--color-fog-100);
+    color: var(--color-ink-950);
+  }
+
+  /* ── Image ──────────────────────────────────── */
+  .player__stage {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    background: #000;
+    box-shadow: 0 40px 120px -30px rgb(229 22 42 / 0.35);
+  }
+
+  .player__screen {
+    position: absolute;
+    inset: 0;
+  }
+
+  .player__screen :global(video),
+  .player__screen :global(iframe) {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    border: 0;
+    background: #000;
+  }
+
+  .player__screen :global(video) {
+    object-fit: contain;
+  }
+
+  /* Plein écran : l'image et ses commandes occupent tout l'écran */
+  .player__stage:fullscreen {
+    width: 100vw;
+    height: 100vh;
+    aspect-ratio: auto !important;
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  /* ── Commandes de lecture ───────────────────── */
+  .pc {
+    --played: 0;
+    --buffered: 0;
+    position: absolute;
+    inset: 0;
+    color: #fff;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  .pc__surface {
+    position: absolute;
+    inset: 0;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .pc.is-idle .pc__surface {
+    cursor: none;
+  }
+
+  /* Grand bouton central : visible à l'arrêt */
+  .pc__big {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    display: grid;
+    place-items: center;
+    width: clamp(3.5rem, 9vw, 5rem);
+    aspect-ratio: 1;
+    border-radius: 50%;
+    background: var(--color-rec);
+    box-shadow:
+      0 14px 34px -10px rgb(229 22 42 / 0.9),
+      inset 0 1px 0 rgb(255 255 255 / 0.3);
+    opacity: 0;
+    translate: -50% -50%;
+    scale: 0.8;
+    pointer-events: none;
+    transition:
+      opacity 0.3s ease,
+      scale 0.6s var(--ease-expo);
+  }
+
+  .pc__big :global(svg) {
+    width: 34%;
+    height: 34%;
+    margin-left: 6%;
+  }
+
+  .pc.is-paused:not(.is-waiting, .is-ended, .is-error) .pc__big {
+    opacity: 1;
+    scale: 1;
+  }
+
+  /* Message d'état (chargement, reprise, qualité), comme les étiquettes des vignettes.
+     En haut à droite : le coin gauche est souvent pris par une incrustation de la vidéo (pastille LIVE). */
+  .pc__state {
+    position: absolute;
+    top: clamp(0.6rem, 1.6vw, 1rem);
+    right: clamp(0.6rem, 1.6vw, 1rem);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.35rem 0.6rem;
+    border-radius: 6px;
+    background: rgb(0 0 0 / 0.66);
+    font-size: 0.6rem;
+    opacity: 0;
+    translate: 0 -4px;
+    pointer-events: none;
+    transition:
+      opacity 0.3s ease,
+      translate 0.5s var(--ease-expo);
+  }
+
+  .pc.has-state .pc__state {
+    opacity: 1;
+    translate: 0 0;
+  }
+
+  /* Fin de lecture et erreur de chargement */
+  .pc__over {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-content: center;
+    justify-items: center;
+    gap: 0.75rem;
+    padding: 1rem 1rem 4rem;
+    background: rgb(6 6 7 / 0.76);
+    text-align: center;
+  }
+
+  .pc__over-title {
+    font-size: clamp(1.05rem, 2vw, 1.4rem);
+    font-weight: 560;
+    letter-spacing: -0.025em;
+  }
+
+  .pc__over-text {
+    max-width: 34ch;
+    color: var(--color-fog-300);
+    font-size: 0.92rem;
+  }
+
+  .pc__actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.6rem;
+    margin-top: 0.25rem;
+  }
+
+  .pc__action {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.6rem;
+    height: 2.75rem;
+    padding-inline: 1.15rem;
+    border-radius: 999px;
+    border: 1px solid rgb(255 255 255 / 0.3);
+    color: #fff;
+    font-size: 0.92rem;
+    font-weight: 500;
+    letter-spacing: -0.01em;
+    white-space: nowrap;
+    cursor: pointer;
+    transition:
+      background-color 0.3s ease,
+      border-color 0.3s ease,
+      box-shadow 0.4s var(--ease-expo),
+      scale 0.3s var(--ease-expo);
+  }
+
+  .pc__action :global(svg) {
+    width: 1rem;
+    height: 1rem;
+  }
+
+  .pc__action:hover {
+    border-color: rgb(255 255 255 / 0.55);
+    background: rgb(255 255 255 / 0.12);
+  }
+
+  .pc__action:active {
+    scale: 0.97;
+  }
+
+  .pc__action--primary {
+    border-color: transparent;
+    background: var(--color-rec);
+    box-shadow:
+      0 16px 40px -16px rgb(229 22 42 / 0.9),
+      inset 0 1px 0 rgb(255 255 255 / 0.22);
+  }
+
+  .pc__action--primary:hover {
+    border-color: transparent;
+    background: var(--color-rec);
+    box-shadow:
+      0 20px 48px -14px rgb(229 22 42 / 0.75),
+      0 0 0 1px rgb(255 255 255 / 0.5);
+  }
+
+  /* Bandeau du bas : barre de lecture + boutons, sur un dégradé pour rester lisible */
+  .pc__bottom {
+    position: absolute;
+    inset: auto 0 0;
+    display: grid;
+    padding: 3rem clamp(0.5rem, 1.5vw, 1rem) clamp(0.3rem, 0.9vw, 0.6rem);
+    /* Assez dense pour rester lisible quand l'image est claire à cet endroit (page web, fond blanc) */
+    background: linear-gradient(0deg, rgb(0 0 0 / 0.9), rgb(0 0 0 / 0.74) 38%, rgb(0 0 0 / 0.3) 72%, transparent);
+    text-shadow: 0 1px 2px rgb(0 0 0 / 0.6);
+    pointer-events: none;
+    transition:
+      opacity 0.4s ease,
+      translate 0.6s var(--ease-expo);
+  }
+
+  .pc.is-idle .pc__bottom {
+    opacity: 0;
+    translate: 0 0.5rem;
+  }
+
+  .pc__seek,
+  .pc__row {
+    pointer-events: auto;
+  }
+
+  .pc.is-idle .pc__seek,
+  .pc.is-idle .pc__row {
+    pointer-events: none;
+  }
+
+  /* ── Barre de lecture ── */
+  .pc__seek {
+    position: relative;
+    display: grid;
+    align-items: center;
+    height: 1.5rem;
+    margin-inline: 0.35rem;
+    cursor: pointer;
+    touch-action: pan-y;
+  }
+
+  .pc__track {
+    position: relative;
+    height: 4px;
+    border-radius: 2px;
+    background: rgb(255 255 255 / 0.22);
+    overflow: hidden;
+    transition: scale 0.4s var(--ease-expo);
+  }
+
+  .pc__track i {
+    position: absolute;
+    inset: 0;
+    transform-origin: left;
+  }
+
+  .pc__buffer {
+    background: rgb(255 255 255 / 0.3);
+    transform: scaleX(var(--buffered));
+  }
+
+  .pc__fill {
+    background: var(--color-rec);
+    transform: scaleX(var(--played));
+  }
+
+  /* Coupes entre chapitres : la barre se lit comme une suite de clips */
+  .pc__marks :global(i) {
+    position: absolute;
+    inset-block: 0;
+    width: 3px;
+    margin-left: -1.5px;
+    background: rgb(6 6 7 / 0.9);
+  }
+
+  .pc__knob {
+    position: absolute;
+    left: calc(var(--played) * 100%);
+    top: 50%;
+    width: 0.8rem;
+    height: 0.8rem;
+    margin: -0.4rem 0 0 -0.4rem;
+    border-radius: 50%;
+    background: #fff;
+    box-shadow: 0 2px 8px rgb(0 0 0 / 0.5);
+    scale: 0;
+    pointer-events: none;
+    transition: scale 0.4s var(--ease-expo);
+  }
+
+  .pc__tip {
+    position: absolute;
+    left: var(--tip-x, 50%);
+    bottom: calc(100% + 0.2rem);
+    padding: 0.3rem 0.55rem;
+    border-radius: 6px;
+    background: rgb(0 0 0 / 0.84);
+    color: #fff;
+    font-size: 0.6rem;
+    white-space: nowrap;
+    opacity: 0;
+    translate: -50% 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease;
+  }
+
+  .pc.is-seeking .pc__track,
+  .pc__seek:has(.pc__range:focus-visible) .pc__track {
+    scale: 1 1.5;
+  }
+
+  .pc.is-seeking .pc__knob,
+  .pc__seek:has(.pc__range:focus-visible) .pc__knob {
+    scale: 1;
+  }
+
+  .pc.is-seeking .pc__tip:not(:empty) {
+    opacity: 1;
+  }
+
+  @media (hover: hover) {
+    .pc__seek:hover .pc__track {
+      scale: 1 1.5;
+    }
+
+    .pc__seek:hover .pc__knob {
+      scale: 1;
+    }
+
+    .pc__seek:hover .pc__tip:not(:empty) {
+      opacity: 1;
+    }
+  }
+
+  /* Curseur réel, pour le clavier et les lecteurs d'écran (la souris et le doigt passent par la barre) */
+  .pc__range {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: 0;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .pc__seek:has(.pc__range:focus-visible) {
+    outline: 2px solid var(--color-rec-bright);
+    outline-offset: 2px;
+    border-radius: 6px;
+  }
+
+  /* ── Boutons ── */
+  .pc__row {
+    display: flex;
+    align-items: center;
+    gap: 0.1rem;
+    min-width: 0;
+  }
+
+  .pc__btn {
+    display: grid;
+    flex: none;
+    place-items: center;
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 50%;
+    color: #fff;
+    cursor: pointer;
+    transition:
+      background-color 0.3s ease,
+      scale 0.3s var(--ease-expo);
+  }
+
+  .pc__btn :global(svg) {
+    display: block;
+    width: 1.15rem;
+    height: 1.15rem;
+  }
+
+  .pc__btn:hover {
+    background: rgb(255 255 255 / 0.14);
+  }
+
+  .pc__btn:active {
+    scale: 0.92;
+  }
+
+  .pc__btn:focus-visible {
+    outline-offset: 0;
+    border-radius: 50%;
+  }
+
+  /* Une seule icône par bouton, selon l'état du lecteur */
+  .pc.is-paused [data-icon='pause'],
+  .pc:not(.is-paused) [data-icon='play'],
+  .pc.is-muted [data-icon='volume'],
+  .pc:not(.is-muted) [data-icon='mute'],
+  .pc.is-full [data-icon='expand'],
+  .pc:not(.is-full) [data-icon='compress'] {
+    display: none;
+  }
+
+  .pc__btn--text {
+    width: auto;
+    min-width: 2.5rem;
+    padding-inline: 0.35rem;
+    border-radius: 999px;
+  }
+
+  .pc__btn--text:focus-visible {
+    border-radius: 999px;
+  }
+
+  .pc__pill {
+    padding: 0.3rem 0.45rem;
+    border-radius: 5px;
+    border: 1px solid rgb(255 255 255 / 0.4);
+    font-size: 0.58rem;
+    line-height: 1;
+    transition:
+      background-color 0.3s ease,
+      border-color 0.3s ease;
+  }
+
+  .pc__btn--text[data-hd='true'] .pc__pill {
+    border-color: var(--color-rec-bright);
+    background: rgb(229 22 42 / 0.32);
+  }
+
+  .pc__time {
+    margin-inline: 0.45rem 0.25rem;
+    font-size: 0.66rem;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+
+  .pc__time-total {
+    color: rgb(255 255 255 / 0.68);
+  }
+
+  .pc__chapter {
+    min-width: 0;
+    margin-left: 0.5rem;
+    padding-left: 0.75rem;
+    border-left: 1px solid rgb(255 255 255 / 0.28);
+    overflow: hidden;
+    font-size: 0.88rem;
+    letter-spacing: -0.01em;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .pc__chapter:empty {
+    display: none;
+  }
+
+  .pc__gap {
+    flex: 1 0 0.25rem;
+  }
+
+  /* Volume : réglage fin à la souris ; au doigt, les boutons du téléphone font le travail */
+  .pc__vol {
+    display: none;
+  }
+
+  @media (hover: hover) and (pointer: fine) and (min-width: 48rem) {
+    .pc__vol {
+      --v: 1;
+      display: block;
+      width: 4.25rem;
+      height: 1.5rem;
+      margin: 0 0.3rem 0 0.1rem;
+      background: transparent;
+      cursor: pointer;
+      -webkit-appearance: none;
+      appearance: none;
+    }
+
+    .pc__vol::-webkit-slider-runnable-track {
+      height: 3px;
+      border-radius: 2px;
+      background: linear-gradient(90deg, #fff calc(var(--v) * 100%), rgb(255 255 255 / 0.28) 0);
+    }
+
+    .pc__vol::-webkit-slider-thumb {
+      width: 0.7rem;
+      height: 0.7rem;
+      margin-top: calc(1.5px - 0.35rem);
+      border: 0;
+      border-radius: 50%;
+      background: #fff;
+      -webkit-appearance: none;
+      appearance: none;
+    }
+
+    .pc__vol::-moz-range-track {
+      height: 3px;
+      border-radius: 2px;
+      background: rgb(255 255 255 / 0.28);
+    }
+
+    .pc__vol::-moz-range-progress {
+      height: 3px;
+      border-radius: 2px;
+      background: #fff;
+    }
+
+    .pc__vol::-moz-range-thumb {
+      width: 0.7rem;
+      height: 0.7rem;
+      border: 0;
+      border-radius: 50%;
+      background: #fff;
+    }
+  }
+
+  /* Au doigt : cibles de 44 px */
+  @media (pointer: coarse) {
+    .pc__seek {
+      height: 2.25rem;
+    }
+
+    .pc__btn {
+      width: 2.75rem;
+      height: 2.75rem;
+    }
+
+    .pc__btn--text {
+      width: auto;
+      min-width: 2.75rem;
+    }
+  }
+
+  @media (max-width: 40rem) {
+    .pc__chapter {
+      display: none;
+    }
+
+    /* Petite image : le dégradé monte moins haut pour laisser voir la vidéo */
+    .pc__bottom {
+      padding-top: 1.5rem;
+    }
+
+    .pc__over {
+      padding-bottom: 3.5rem;
+    }
+
+    .pc__over-text {
+      display: none;
+    }
+  }
+
+  /* ── Parties de la série ────────────────────── */
+  .player__parts {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(0, 1fr);
+    gap: 0.5rem;
+  }
+
+  .player__parts :global(.part) {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    min-height: 3.25rem;
+    padding: 0.4rem 0.9rem 0.4rem 0.4rem;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--line);
+    background: var(--color-ink-900);
+    color: var(--color-fog-300);
+    overflow: hidden;
+    text-align: left;
+    cursor: pointer;
+    transition:
+      border-color 0.4s ease,
+      background-color 0.4s ease,
+      color 0.4s ease;
+  }
+
+  .player__parts :global(.part:hover) {
+    border-color: var(--line-strong);
+    color: var(--color-fog-100);
+  }
+
+  .player__parts :global(.part[aria-current='true']) {
+    border-color: rgb(255 77 90 / 0.5);
+    background: var(--color-ink-850);
+    color: var(--color-fog-100);
+  }
+
+  .player__parts :global(.part:focus-visible) {
+    outline-offset: 2px;
+    border-radius: var(--radius-md);
+  }
+
+  .player__parts :global(.part__thumb) {
+    flex: none;
+    width: 4.4rem;
+    height: auto;
+    aspect-ratio: 16 / 9;
+    border-radius: 0.5rem;
+    object-fit: cover;
+    opacity: 0.6;
+    transition: opacity 0.4s ease;
+  }
+
+  .player__parts :global(.part:hover .part__thumb),
+  .player__parts :global(.part[aria-current='true'] .part__thumb) {
+    opacity: 1;
+  }
+
+  .player__parts :global(.part__txt) {
+    display: grid;
+    gap: 0.15rem;
+    min-width: 0;
+  }
+
+  .player__parts :global(.part__name) {
+    overflow: hidden;
+    font-size: 0.95rem;
+    font-weight: 500;
+    letter-spacing: -0.015em;
+    line-height: 1.2;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .player__parts :global(.part__len) {
+    color: var(--color-fog-400);
+    font-size: 0.58rem;
+  }
+
+  /* Avancée dans la partie : reste affichée quand on passe à la suivante */
+  .player__parts :global(.part__bar) {
+    position: absolute;
+    inset: auto 0 0;
+    height: 2px;
+    background: var(--color-rec);
+    transform: scaleX(var(--pp, 0));
+    transform-origin: left;
+  }
+
+  @media (max-width: 40rem) {
+    .player__parts :global(.part) {
+      justify-content: center;
+      padding: 0.4rem 0.5rem;
+      text-align: center;
+    }
+
+    .player__parts :global(.part__thumb) {
+      display: none;
+    }
+  }
+
+  /* ── Pied : crédits ─────────────────────────── */
+  .player__foot {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem 1.5rem;
+    min-height: 2.75rem;
+  }
+
+  .player__credits {
+    color: var(--color-fog-400);
+    font-size: 0.8rem;
+  }
+
+  /* Secours si l'intégration est bloquée : la vidéo reste accessible sur YouTube */
+  .player__link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-height: 2.75rem;
+    margin-left: auto;
+    color: var(--color-fog-300);
+    font-size: 0.62rem;
+    transition: color 0.3s ease;
+  }
+
+  .player__link :global(svg) {
+    width: 0.9rem;
+    height: 0.9rem;
+    transition: transform 0.5s var(--ease-expo);
+  }
+
+  .player__link:hover {
+    color: var(--color-fog-100);
+  }
+
+  .player__link:hover :global(svg) {
+    transform: rotate(-45deg);
+  }
+
+  /* Téléphone à l'horizontale : l'image d'abord, le reste s'efface */
+  @media (max-height: 30rem) and (orientation: landscape) {
+    .player {
+      padding: 0.5rem 1rem;
+    }
+
+    .player__panel,
+    .player.has-parts .player__panel {
+      gap: 0.5rem;
+      width: min(100%, calc((100dvh - 4.25rem) * 16 / 9));
+    }
+
+    .player__meta,
+    .player__parts,
+    .player__foot {
+      display: none;
+    }
+
+    .player__title {
+      font-size: 1rem;
+    }
+  }
+</style>

@@ -1,0 +1,46 @@
+---
+/**
+ * Bouton qui ouvre le lecteur du site (src/scripts/modules/player.ts) sur une vidéo d'un projet.
+ * Toutes les données du lecteur sont posées en attributs data-. Les vidéos d'un même projet
+ * partagent `data-group` : le lecteur les enchaîne comme les parties d'une série.
+ */
+import { getImage } from 'astro:assets';
+import type { HTMLAttributes } from 'astro/types';
+import { metaLine, type Project, type Video } from '../../lib/portfolio';
+
+interface Props extends HTMLAttributes<'button'> {
+  project: Project;
+  video: Video;
+  /** Pose l'id de la vidéo (cible des lignes de chapitre et du grand bouton de la page projet). Une fois par page. */
+  anchor?: boolean;
+}
+
+const { project: p, video: v, anchor = false, class: className, ...rest } = Astro.props;
+
+const poster = v.poster ? (await getImage({ src: v.poster, width: 1280, format: 'webp' })).src : undefined;
+const thumb =
+  v.poster && p.playable.length > 1 ? (await getImage({ src: v.poster, width: 240, format: 'webp' })).src : undefined;
+const chapters =
+  v.chapters.length > 0 ? JSON.stringify(v.chapters.map((c) => ({ t: c.seconds, l: c.label }))) : undefined;
+---
+
+<button
+  type="button"
+  class={className}
+  id={anchor ? v.anchor : undefined}
+  data-play
+  data-group={p.group}
+  data-kind={v.kind}
+  data-src={v.src}
+  data-src-light={v.fileLight}
+  data-poster={poster}
+  data-thumb={thumb}
+  data-ratio={p.format}
+  data-title={v.title}
+  data-part={v.part}
+  data-length={v.duration}
+  data-chapters={chapters}
+  data-meta={metaLine(p)}
+  data-credits={v.credits || undefined}
+  {...rest}><slot /></button
+>

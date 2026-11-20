@@ -1,0 +1,177 @@
+---
+/**
+ * Page Portfolio (« Selected Works ») : tous les projets, filtrables par catégorie,
+ * puis la méthode de montage, l'emplacement « Behind the Edit » et le contact.
+ * Contenus : src/data/portfolio.ts et src/data/method.ts.
+ */
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { galleryProjects, liveProjects, toClock, toSeconds, usedCategories, pad } from '../../lib/portfolio';
+import Gallery from '../../components/portfolio/Gallery.astro';
+import UpcomingSlots from '../../components/portfolio/UpcomingSlots.astro';
+import Method from '../../components/portfolio/Method.astro';
+import BehindTheEdit from '../../components/portfolio/BehindTheEdit.astro';
+import PlayerDialog from '../../components/portfolio/PlayerDialog.astro';
+import FinalCta from '../../components/home/FinalCta.astro';
+
+/* Chiffres de l'en-tête : calculés à partir des projets en ligne, rien n'est saisi à la main. */
+const editedSeconds = liveProjects.reduce((total, p) => total + toSeconds(p.duration), 0);
+const stats = [
+  { label: 'Projets', value: pad(liveProjects.length), count: liveProjects.length },
+  { label: 'Catégories', value: pad(usedCategories.length), count: usedCategories.length },
+  ...(editedSeconds > 0
+    ? [{ label: 'De vidéo montée', value: toClock(editedSeconds), count: editedSeconds, clock: true }]
+    : []),
+];
+---
+
+<BaseLayout
+  title="Portfolio"
+  description="Selected Works : les montages vidéo de nether, projet par projet. Crypto et trading, gaming, YouTube long format : le contexte, les choix de montage et le travail réalisé."
+>
+  <section id="portfolio" class="wk" data-chapter="Selected Works" data-hero-root>
+    <div class="wk__bg" aria-hidden="true"></div>
+    <div class="wrap">
+      <header class="wk__head">
+        <h1 class="wk__title h-display" data-hero aria-label="Selected Works">
+          <span class="wk__line" aria-hidden="true"><span data-hero-line>Selected</span></span>
+          <span class="wk__line" aria-hidden="true"
+            ><span data-hero-line><em class="serif">Works</em><span class="wk__dot"></span></span></span
+          >
+        </h1>
+        <p class="wk__lead lead" data-hero>
+          Des vidéos que j’ai montées pour des créateurs, de la crypto au gaming. Chaque projet a sa page : le
+          contexte, les choix de montage et le travail réalisé, piste par piste.
+        </p>
+        <dl class="wk__stats" data-hero>
+          {
+            stats.map((s) => (
+              <div>
+                <dt class="mono">{s.label}</dt>
+                <dd>
+                  <span data-count={s.count} data-count-format={s.clock ? 'mmss' : undefined}>
+                    {s.value}
+                  </span>
+                </dd>
+              </div>
+            ))
+          }
+        </dl>
+      </header>
+
+      <Gallery projects={galleryProjects} filters heading="h2" label="Tous les projets" />
+      <UpcomingSlots count={liveProjects.length} />
+    </div>
+    <PlayerDialog />
+  </section>
+
+  <Method index="02" />
+  <BehindTheEdit index="03" />
+  <FinalCta />
+</BaseLayout>
+
+<style>
+  .wk {
+    position: relative;
+    isolation: isolate;
+    padding-top: calc(var(--header-h) + clamp(3rem, 8vw, 6rem));
+    padding-bottom: clamp(5rem, 9vw, 9rem);
+  }
+
+  /* Lueur d'écran et règle de timeline en fond, comme le hero de l'accueil */
+  .wk__bg {
+    position: absolute;
+    inset: 0 0 auto;
+    z-index: -1;
+    height: min(64rem, 100%);
+    background:
+      radial-gradient(ellipse 50% 40% at 78% 8%, rgb(229 22 42 / 0.16), transparent 70%),
+      linear-gradient(90deg, rgb(255 255 255 / 0.03) 1px, transparent 1px) 0 0 / calc(100% / 12) 100%;
+    -webkit-mask-image: linear-gradient(180deg, #000 45%, transparent);
+    mask-image: linear-gradient(180deg, #000 45%, transparent);
+    pointer-events: none;
+  }
+
+  .wk__head {
+    display: grid;
+    gap: 2rem;
+    margin-bottom: clamp(3.5rem, 7vw, 6rem);
+  }
+
+  @media (min-width: 64rem) {
+    .wk__head {
+      grid-template-columns: minmax(0, 1fr) minmax(0, 27rem);
+      align-items: end;
+      column-gap: 4rem;
+    }
+
+    .wk__title {
+      grid-row: span 2;
+    }
+  }
+
+  .wk__title {
+    font-size: clamp(3.4rem, 13vw, 13rem);
+  }
+
+  .wk__line {
+    display: block;
+    overflow: hidden;
+    padding: 0.02em 0.1em 0.1em;
+    margin: -0.02em -0.1em -0.1em;
+  }
+
+  .wk__line > span {
+    display: block;
+  }
+
+  .wk__line:nth-child(2) {
+    padding-left: clamp(0rem, 9vw, 9rem);
+  }
+
+  .wk__title :global(em) {
+    color: var(--color-fog-100);
+  }
+
+  /* Le point final devient le point REC, comme sur l'accueil */
+  .wk__dot {
+    display: inline-block;
+    width: 0.15em;
+    height: 0.15em;
+    margin-left: 0.05em;
+    border-radius: 50%;
+    background: var(--color-rec);
+    box-shadow: 0 0 0.35em rgb(229 22 42 / 0.75);
+    animation: rec-blink 1.6s steps(1, end) infinite;
+  }
+
+  .wk__lead {
+    max-width: 40ch;
+  }
+
+  .wk__stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem clamp(1.75rem, 4vw, 3rem);
+    padding-top: 1.25rem;
+    border-top: 1px solid var(--line-strong);
+  }
+
+  .wk__stats > div {
+    display: flex;
+    flex-direction: column-reverse;
+    gap: 0.4rem;
+  }
+
+  .wk__stats dt {
+    color: var(--color-fog-400);
+    font-size: 0.6rem;
+  }
+
+  .wk__stats dd {
+    font-size: clamp(1.6rem, 2.6vw, 2.2rem);
+    font-weight: 560;
+    letter-spacing: -0.04em;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+  }
+</style>

@@ -1,0 +1,67 @@
+---
+/**
+ * Image d'un projet ou d'une vidéo, selon ce qui existe :
+ *  - miniature locale (src/assets/portfolio/), optimisée par Astro ;
+ *  - miniature YouTube récupérée au build ;
+ *  - secours : miniature YouTube chargée par le navigateur ;
+ *  - rien : motif « média hors ligne ».
+ */
+import { Image } from 'astro:assets';
+import type { PosterSource } from '../../lib/portfolio';
+
+interface Props {
+  source: PosterSource;
+  alt: string;
+  sizes: string;
+  class?: string;
+  widths?: number[];
+  loading?: 'eager' | 'lazy';
+  fetchpriority?: 'high' | 'low' | 'auto';
+}
+
+const { source, alt, sizes, class: className, widths = [480, 800, 1280, 1600], loading = 'lazy', fetchpriority } =
+  Astro.props;
+
+/** Jamais plus large que l'image d'origine. */
+const fit = (max: number): number[] => {
+  const kept = widths.filter((w) => w <= max);
+  return kept.length > 0 ? kept : [max];
+};
+---
+
+{
+  source.kind === 'local' ? (
+    <Image
+      src={source.image}
+      alt={alt}
+      widths={fit(source.image.width)}
+      sizes={sizes}
+      class={className}
+      loading={loading}
+      fetchpriority={fetchpriority}
+    />
+  ) : source.kind === 'remote' ? (
+    <Image
+      src={source.thumb.url}
+      width={source.thumb.width}
+      height={source.thumb.height}
+      alt={alt}
+      widths={fit(source.thumb.width)}
+      sizes={sizes}
+      class={className}
+      loading={loading}
+    />
+  ) : source.kind === 'youtube' ? (
+    <img
+      src={`https://i.ytimg.com/vi/${source.id}/hqdefault.jpg`}
+      alt={alt}
+      width="480"
+      height="360"
+      loading={loading}
+      decoding="async"
+      class={className}
+    />
+  ) : (
+    <span class:list={[className, 'poster-none hatch']} role="img" aria-label={alt || 'Média hors ligne'} />
+  )
+}

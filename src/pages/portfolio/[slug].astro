@@ -1,0 +1,762 @@
+---
+/**
+ * Page d'un projet : générée pour chaque projet en ligne de src/data/portfolio.ts.
+ * Les sections sans contenu ne s'affichent pas (pas de vidéos multiples, pas de chiffres,
+ * pas d'images clés… : elles disparaissent simplement).
+ */
+import type { GetStaticPaths } from 'astro';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { site } from '../../config/site';
+import { categoryHref, neighbors, pad, posterOf, projectPages, type Project } from '../../lib/portfolio';
+import Poster from '../../components/portfolio/Poster.astro';
+import PlayTrigger from '../../components/portfolio/PlayTrigger.astro';
+import ProjectContext from '../../components/portfolio/ProjectContext.astro';
+import ProjectVideos from '../../components/portfolio/ProjectVideos.astro';
+import WorkTimeline from '../../components/portfolio/WorkTimeline.astro';
+import ProjectStructure from '../../components/portfolio/ProjectStructure.astro';
+import ProjectEnd from '../../components/portfolio/ProjectEnd.astro';
+import BeforeAfter from '../../components/portfolio/BeforeAfter.astro';
+import PlayerDialog from '../../components/portfolio/PlayerDialog.astro';
+import TrackLabel from '../../components/ui/TrackLabel.astro';
+import Icon from '../../components/ui/Icon.astro';
+
+export const getStaticPaths = (() =>
+  projectPages.map((project) => ({ params: { slug: project.slug }, props: { project } }))) satisfies GetStaticPaths;
+
+interface Props {
+  project: Project;
+}
+
+const { project: p } = Astro.props;
+const nav = neighbors(p.slug);
+const poster = await posterOf(p);
+const first = p.playable[0];
+const parts = p.playable.length;
+
+/* La section « vidéos » n'existe que si elle apporte quelque chose : plusieurs parties, des chapitres, une description. */
+const showVideos = parts > 1 || p.playable.some((v) => v.chapters.length > 0 || v.description);
+const playText = first ? (parts > 1 ? `Lire la partie 1 · ${first.duration ?? ''}`.replace(/ · $/, '') : first.playLabel) : '';
+
+/* Fiche du projet */
+const rows: { label: string; value: string; iso?: string }[] = [
+  { label: 'Créateur', value: p.creator },
+  { label: 'Type de montage', value: p.editType },
+  ...(p.duration ? [{ label: 'Durée', value: parts > 1 ? `${p.duration} · ${parts} parties` : p.duration }] : []),
+  ...(p.date ? [{ label: 'Publication', value: p.date.label, iso: p.date.iso }] : []),
+  ...(p.platform ? [{ label: 'Plateforme', value: p.platform }] : []),
+];
+
+/* Sections présentes, numérotées dans l'ordre comme des pistes */
+const sections = [
+  p.context.length > 0 || p.facts.length > 0 || p.compression ? 'context' : null,
+  showVideos ? 'videos' : null,
+  p.tracks.length > 0 ? 'work' : null,
+  p.outline.length > 0 || p.frames.length > 0 ? 'structure' : null,
+  p.beforeAfter ? 'compare' : null,
+  p.tools.length > 0 || p.process.length > 0 ? 'process' : null,
+].filter((s): s is string => s !== null);
+const TRACKS = ['A1', 'V1', 'V2', 'V3', 'A2', 'REC'];
+const slot = (name: string) => {
+  const i = sections.indexOf(name);
+  return { track: TRACKS[i] ?? 'V1', index: pad(i + 1) };
+};
+---
+
+<BaseLayout title={p.title} description={p.description || `${p.title} : un montage réalisé par ${site.name}.`}>
+  <section class="ph" data-chapter="Projet" data-hero-root>
+    <div class="ph__bg" aria-hidden="true"></div>
+    <div class="wrap">
+      <nav class="ph__crumbs mono" aria-label="Fil d’Ariane" data-hero>
+        <a href="/portfolio" data-cut-label="Portfolio">
+          <Icon name="arrow" />
+          Selected Works
+        </a>
+        {
+          p.categories[0] && (
+            <>
+              <span class="ph__crumb-sep" aria-hidden="true" />
+              <a href={categoryHref(p.categories[0].id)} data-cut-label="Portfolio">
+                {p.categories[0].label}
+              </a>
+            </>
+          )
+        }
+        {nav.total > 1 && <span class="ph__count">{pad(nav.position)} / {pad(nav.total)}</span>}
+      </nav>
+
+      <h1 class="ph__title h-display" data-hero aria-label={p.title}>
+        <span class="ph__line" aria-hidden="true"><span data-hero-line set:html={p.titleHtml} /></span>
+      </h1>
+      {p.subtitle && <p class="ph__subtitle" data-hero>{p.subtitle}</p>}
+
+      <div class="ph__grid">
+        <div class="ph__media-col">
+          <div class="ph__ambient" aria-hidden="true">
+            <Poster source={poster} alt="" sizes="320px" widths={[320]} />
+          </div>
+          <div class="ph__media card" data-morph-target data-preview-card={p.preview ? '' : undefined} data-follow-area>
+            <span class="ph__zoom" data-zoom="1.06">
+              <Poster
+                source={poster}
+                alt={`Image du montage « ${p.title} »`}
+                sizes="(min-width: 64rem) 64vw, 100vw"
+                class="ph__poster"
+                loading="eager"
+                fetchpriority="high"
+              />
+              {
+                p.preview && (
+                  <video class="ph__preview" muted loop playsinline preload="none" data-src={p.preview} aria-hidden="true" />
+                )
+              }
+            </span>
+            <span class="ph__overlay" aria-hidden="true">
+              <span class="corners"><i></i><i></i><i></i><i></i></span>
+              {p.preview && <span class="ph__tag ph__tag--tl mono"><span class="rec-dot"></span>Aperçu</span>}
+              <span class="ph__tag ph__tag--tr mono">{p.format}</span>
+              {p.duration && <span class="ph__tag ph__tag--br mono">{p.duration}</span>}
+            </span>
+            {
+              p.preview && (
+                <span class="ph__progress" aria-hidden="true">
+                  <i data-preview-progress />
+                </span>
+              )
+            }
+            {
+              first &&
+                (showVideos ? (
+                  <button type="button" class="ph__play" data-play-for={first.anchor} data-follow>
+                    <span class="ph__play-icon" aria-hidden="true">
+                      <Icon name="play" />
+                    </span>
+                    <span class="ph__play-label">{playText}</span>
+                  </button>
+                ) : (
+                  <PlayTrigger project={p} video={first} class="ph__play" data-follow>
+                    <span class="ph__play-icon" aria-hidden="true">
+                      <Icon name="play" />
+                    </span>
+                    <span class="ph__play-label">{playText}</span>
+                  </PlayTrigger>
+                ))
+            }
+          </div>
+        </div>
+
+        <aside class="ph__sheet" aria-label="Fiche du projet" data-hero>
+          {p.description && <p class="ph__lede">{p.description}</p>}
+          <dl class="ph__facts">
+            {
+              rows.map((row) => (
+                <div>
+                  <dt class="mono">{row.label}</dt>
+                  <dd>{row.iso ? <time datetime={row.iso}>{row.value}</time> : row.value}</dd>
+                </div>
+              ))
+            }
+            <div>
+              <dt class="mono">Univers</dt>
+              <dd class="ph__cats">
+                {
+                  p.categories.map((c) => (
+                    <a href={categoryHref(c.id)} class="chip ph__cat" data-cut-label="Portfolio">
+                      {c.label}
+                    </a>
+                  ))
+                }
+              </dd>
+            </div>
+            <div class="ph__fact--me">
+              <dt class="mono">Montage</dt>
+              <dd>
+                <span class="rec-dot" aria-hidden="true"></span>
+                Réalisé par {site.name}
+              </dd>
+            </div>
+          </dl>
+          <a href="#contact-projet" class="ph__ask">
+            <span>Un projet du même genre ? Parlons-en</span>
+            <Icon name="arrow-down" />
+          </a>
+        </aside>
+      </div>
+    </div>
+    <PlayerDialog />
+  </section>
+
+  {sections.includes('context') && <ProjectContext project={p} {...slot('context')} />}
+  {sections.includes('videos') && <ProjectVideos project={p} {...slot('videos')} />}
+  {sections.includes('work') && <WorkTimeline project={p} {...slot('work')} />}
+  {sections.includes('structure') && <ProjectStructure project={p} {...slot('structure')} />}
+
+  {
+    p.beforeAfter && (
+      <section id="avant-apres" class="section pcmp" data-chapter="Avant / après">
+        <div class="wrap">
+          <header class="ps-head">
+            <TrackLabel {...slot('compare')} label="Avant / après" />
+            <h2 class="ps-title" data-reveal="lines">
+              Avant, <span class="serif">après.</span>
+            </h2>
+          </header>
+          <div class="pcmp__frame" data-reveal="clip">
+            <BeforeAfter {...p.beforeAfter} title={p.title} />
+          </div>
+        </div>
+      </section>
+    )
+  }
+
+  {
+    sections.includes('process') && (
+      <section id="coulisses" class="section pproc" data-chapter="Coulisses">
+        <div class="wrap">
+          <header class="ps-head">
+            <TrackLabel {...slot('process')} label="Coulisses" />
+            <h2 class="ps-title" data-reveal="lines">
+              Les <span class="serif">coulisses.</span>
+            </h2>
+          </header>
+          <div class="pproc__grid">
+            {p.process.length > 0 && (
+              <ol class="pproc__steps" data-reveal="stagger">
+                {p.process.map((step, i) => (
+                  <li>
+                    <span class="mono pproc__num">{pad(i + 1)}</span>
+                    <div>
+                      <h3 class="pproc__title">{step.title}</h3>
+                      <p>{step.text}</p>
+                    </div>
+                  </li>
+                ))}
+              </ol>
+            )}
+            {p.tools.length > 0 && (
+              <div class="pproc__tools">
+                <p class="mono">Outils utilisés</p>
+                <ul>
+                  {p.tools.map((tool) => (
+                    <li class="chip">{tool}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        </div>
+      </section>
+    )
+  }
+
+  <ProjectEnd prev={nav.prev} next={nav.next} />
+</BaseLayout>
+
+<style>
+  /* ── En-tête ────────────────────────────────── */
+  .ph {
+    position: relative;
+    isolation: isolate;
+    padding-top: calc(var(--header-h) + clamp(2rem, 6vw, 4.5rem));
+    padding-bottom: clamp(4.5rem, 9vw, 8rem);
+  }
+
+  .ph__bg {
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background:
+      radial-gradient(ellipse 55% 45% at 72% 22%, rgb(229 22 42 / 0.13), transparent 70%),
+      linear-gradient(90deg, rgb(255 255 255 / 0.03) 1px, transparent 1px) 0 0 / calc(100% / 12) 100%;
+    -webkit-mask-image: linear-gradient(180deg, #000 50%, transparent);
+    mask-image: linear-gradient(180deg, #000 50%, transparent);
+    pointer-events: none;
+  }
+
+  .ph__crumbs {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.25rem 0.9rem;
+    margin-bottom: clamp(1.25rem, 3vw, 2.25rem);
+    color: var(--color-fog-400);
+    font-size: 0.64rem;
+  }
+
+  .ph__crumbs a {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.55rem;
+    min-height: 2.75rem;
+    color: var(--color-fog-300);
+    transition: color 0.3s ease;
+  }
+
+  .ph__crumbs a:first-child {
+    color: var(--color-fog-100);
+  }
+
+  .ph__crumbs a :global(svg) {
+    width: 0.95rem;
+    height: 0.95rem;
+    rotate: 180deg;
+    transition: translate 0.6s var(--ease-expo);
+  }
+
+  .ph__crumbs a:hover {
+    color: var(--color-rec-bright);
+  }
+
+  .ph__crumbs a:hover :global(svg) {
+    translate: -0.25rem 0;
+  }
+
+  .ph__crumb-sep {
+    width: 1rem;
+    height: 1px;
+    background: var(--line-strong);
+  }
+
+  .ph__count {
+    margin-left: auto;
+    color: var(--color-fog-300);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .ph__title {
+    max-width: 15ch;
+    font-size: clamp(2.7rem, 8.6vw, 8.75rem);
+  }
+
+  .ph__line {
+    display: block;
+    overflow: hidden;
+    padding: 0.02em 0.1em 0.1em;
+    margin: -0.02em -0.1em -0.1em;
+  }
+
+  .ph__line > span {
+    display: block;
+  }
+
+  .ph__title :global(em) {
+    color: var(--color-fog-300);
+  }
+
+  .ph__subtitle {
+    margin-top: 1.1rem;
+    color: var(--color-fog-400);
+    font-family: var(--font-serif);
+    font-style: italic;
+    font-size: clamp(1.25rem, 1.9vw, 1.6rem);
+  }
+
+  .ph__grid {
+    display: grid;
+    gap: clamp(2rem, 4vw, 3.5rem);
+    margin-top: clamp(2.25rem, 5vw, 4rem);
+  }
+
+  @media (min-width: 64rem) {
+    .ph__grid {
+      grid-template-columns: minmax(0, 8fr) minmax(0, 4fr);
+      align-items: start;
+    }
+
+    .ph__sheet {
+      position: sticky;
+      top: calc(var(--header-h) + 1.5rem);
+    }
+  }
+
+  /* ── Image : mode ambiant, aperçu, bouton de lecture qui suit la souris ── */
+  .ph__media-col {
+    position: relative;
+    isolation: isolate;
+  }
+
+  .ph__ambient {
+    position: absolute;
+    inset: -4% -3% auto;
+    z-index: -1;
+    aspect-ratio: 16 / 9;
+    opacity: 0.4;
+    filter: blur(60px) saturate(1.5);
+    transform: translateZ(0);
+    pointer-events: none;
+  }
+
+  .ph__ambient :global(img) {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .ph__media {
+    position: relative;
+    aspect-ratio: 16 / 9;
+    overflow: hidden;
+    border-radius: var(--radius-xl);
+    background: var(--color-ink-800);
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.06),
+      0 40px 90px -40px rgb(0 0 0 / 0.95);
+  }
+
+  .ph__zoom {
+    position: absolute;
+    inset: 0;
+    display: block;
+    will-change: transform;
+  }
+
+  .ph__media :global(.ph__poster),
+  .ph__preview {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition:
+      scale 1.4s var(--ease-expo),
+      opacity 0.6s ease;
+  }
+
+  .ph__preview {
+    opacity: 0;
+  }
+
+  .ph__media:global(.is-previewing) .ph__preview {
+    opacity: 1;
+  }
+
+  .ph__media:hover :global(.ph__poster),
+  .ph__media:hover .ph__preview {
+    scale: 1.035;
+  }
+
+  .ph__overlay {
+    position: absolute;
+    inset: 1rem;
+    z-index: 1;
+    pointer-events: none;
+  }
+
+  /* Dégradé bas : le bouton reste lisible sur une image claire */
+  .ph__overlay::before {
+    content: '';
+    position: absolute;
+    inset: auto -1rem -1rem;
+    height: 45%;
+    background: linear-gradient(0deg, rgb(0 0 0 / 0.55), transparent);
+  }
+
+  .ph__overlay .corners :global(i) {
+    border-color: rgb(255 255 255 / 0.55);
+    transition: translate 0.7s var(--ease-expo);
+  }
+
+  .ph__media:hover .ph__overlay .corners :global(i:nth-child(1)) {
+    translate: 6px 6px;
+  }
+  .ph__media:hover .ph__overlay .corners :global(i:nth-child(2)) {
+    translate: -6px 6px;
+  }
+  .ph__media:hover .ph__overlay .corners :global(i:nth-child(3)) {
+    translate: 6px -6px;
+  }
+  .ph__media:hover .ph__overlay .corners :global(i:nth-child(4)) {
+    translate: -6px -6px;
+  }
+
+  .ph__tag {
+    position: absolute;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.35rem 0.6rem;
+    border-radius: 6px;
+    background: rgb(0 0 0 / 0.6);
+    color: var(--color-fog-100);
+    font-size: 0.6rem;
+  }
+
+  .ph__tag--tl {
+    top: 0.85rem;
+    left: 0.85rem;
+  }
+
+  .ph__tag--tr {
+    top: 0.85rem;
+    right: 0.85rem;
+  }
+
+  .ph__tag--br {
+    right: 0.85rem;
+    bottom: 0.85rem;
+    background: rgb(0 0 0 / 0.75);
+    font-size: 0.7rem;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .ph__progress {
+    position: absolute;
+    inset: auto 0 0;
+    z-index: 2;
+    height: 3px;
+    background: rgb(255 255 255 / 0.12);
+    opacity: 0;
+    transition: opacity 0.4s ease;
+    pointer-events: none;
+  }
+
+  .ph__progress i {
+    position: absolute;
+    inset: 0;
+    background: var(--color-rec);
+    box-shadow: 0 0 10px rgb(229 22 42 / 0.9);
+    transform: scaleX(var(--vp, 0));
+    transform-origin: left;
+  }
+
+  .ph__media:global(.is-previewing) .ph__progress {
+    opacity: 1;
+  }
+
+  .ph__media :global(.ph__play) {
+    position: absolute;
+    left: 1.85rem;
+    bottom: 1.85rem;
+    z-index: 3;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.85rem;
+    padding: 0.5rem 1.4rem 0.5rem 0.5rem;
+    border-radius: 999px;
+    border: 1px solid rgb(255 255 255 / 0.18);
+    background: rgb(10 10 12 / 0.55);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    color: #fff;
+    font-size: 0.92rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition:
+      background-color 0.4s ease,
+      border-color 0.4s ease;
+  }
+
+  /* Toute l'image lance la lecture (zone rognée par le cadre arrondi) */
+  .ph__media :global(.ph__play)::after {
+    content: '';
+    position: absolute;
+    inset: -100vmax;
+  }
+
+  .ph__media:hover :global(.ph__play) {
+    border-color: rgb(255 255 255 / 0.32);
+    background: rgb(10 10 12 / 0.78);
+  }
+
+  .ph__play-icon {
+    display: grid;
+    place-items: center;
+    width: 3rem;
+    height: 3rem;
+    border-radius: 50%;
+    background: var(--color-rec);
+    animation: ph-pulse 2.4s ease-out infinite;
+  }
+
+  .ph__play-icon :global(svg) {
+    width: 1.1rem;
+    height: 1.1rem;
+    margin-left: 2px;
+  }
+
+  @media (max-width: 40rem) {
+    .ph__media :global(.ph__play) {
+      left: 1rem;
+      bottom: 1rem;
+      padding-right: 0.5rem;
+    }
+
+    .ph__play-label {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+    }
+  }
+
+  /* ── Fiche ──────────────────────────────────── */
+  .ph__sheet {
+    display: grid;
+    gap: 1.5rem;
+    align-content: start;
+  }
+
+  .ph__lede {
+    color: var(--color-fog-100);
+    font-size: clamp(1.1rem, 1.4vw, 1.25rem);
+    line-height: 1.5;
+    letter-spacing: -0.012em;
+  }
+
+  .ph__facts {
+    display: grid;
+    border-top: 1px solid var(--line-strong);
+  }
+
+  .ph__facts > div {
+    display: grid;
+    grid-template-columns: 7.5rem minmax(0, 1fr);
+    gap: 1rem;
+    align-items: baseline;
+    padding-block: 0.85rem;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .ph__facts dt {
+    color: var(--color-fog-400);
+    font-size: 0.6rem;
+  }
+
+  .ph__facts dd {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.4rem 0.6rem;
+    font-size: 1rem;
+    font-weight: 500;
+    letter-spacing: -0.015em;
+  }
+
+  .ph__cat {
+    transition:
+      border-color 0.3s ease,
+      color 0.3s ease;
+  }
+
+  .ph__cat:hover,
+  .ph__cat:focus-visible {
+    border-color: rgb(255 77 90 / 0.55);
+    color: var(--color-fog-100);
+  }
+
+  .ph__fact--me dd {
+    color: var(--color-rec-bright);
+  }
+
+  .ph__ask {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.6rem;
+    justify-self: start;
+    min-height: 2.75rem;
+    color: var(--color-fog-300);
+    font-size: 0.92rem;
+    text-decoration: underline;
+    text-decoration-color: rgb(255 77 90 / 0.5);
+    text-underline-offset: 0.35em;
+    transition:
+      color 0.3s ease,
+      text-decoration-color 0.3s ease;
+  }
+
+  .ph__ask :global(svg) {
+    width: 0.95rem;
+    height: 0.95rem;
+    color: var(--color-rec-bright);
+  }
+
+  .ph__ask:hover {
+    color: var(--color-fog-100);
+    text-decoration-color: var(--color-rec-bright);
+  }
+
+  /* ── Avant / après ── */
+  .pcmp {
+    border-top: 1px solid var(--line);
+  }
+
+  .pcmp__frame {
+    position: relative;
+    aspect-ratio: 16 / 9;
+    overflow: hidden;
+    border-radius: var(--radius-xl);
+    border: 1px solid var(--line);
+  }
+
+  /* ── Coulisses : étapes et outils ── */
+  .pproc {
+    border-top: 1px solid var(--line);
+  }
+
+  .pproc__grid {
+    display: grid;
+    gap: clamp(2.5rem, 5vw, 4rem);
+  }
+
+  @media (min-width: 64rem) {
+    .pproc__grid {
+      grid-template-columns: minmax(0, 7fr) minmax(0, 4fr);
+      align-items: start;
+    }
+  }
+
+  .pproc__steps {
+    display: grid;
+    border-top: 1px solid var(--line);
+  }
+
+  .pproc__steps li {
+    display: grid;
+    grid-template-columns: 3rem minmax(0, 1fr);
+    gap: 1rem;
+    padding-block: 1.5rem;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .pproc__num {
+    padding-top: 0.35rem;
+    color: var(--color-rec-bright);
+  }
+
+  .pproc__title {
+    font-size: 1.3rem;
+    font-weight: 560;
+    letter-spacing: -0.025em;
+  }
+
+  .pproc__steps p {
+    margin-top: 0.5rem;
+    color: var(--color-fog-300);
+  }
+
+  .pproc__tools {
+    display: grid;
+    gap: 1rem;
+  }
+
+  .pproc__tools .mono {
+    color: var(--color-fog-400);
+    font-size: 0.62rem;
+  }
+
+  .pproc__tools ul {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  @keyframes ph-pulse {
+    0% {
+      box-shadow: 0 0 0 0 rgb(229 22 42 / 0.55);
+    }
+    70%,
+    100% {
+      box-shadow: 0 0 0 18px rgb(229 22 42 / 0);
+    }
+  }
+</style>

@@ -1,0 +1,110 @@
+---
+/**
+ * Comparateur avant / après : deux images superposées et un curseur
+ * (utilisable au clavier avec les flèches).
+ */
+import { Image } from 'astro:assets';
+import type { ImageMetadata } from 'astro';
+
+interface Props {
+  before: ImageMetadata;
+  after: ImageMetadata;
+  beforeLabel?: string;
+  afterLabel?: string;
+  title: string;
+}
+
+const { before, after, beforeLabel = 'Avant', afterLabel = 'Après', title } = Astro.props;
+---
+
+<div class="ba" data-ba style="--pos: 50%">
+  <Image src={after} alt={`${afterLabel} : ${title}`} widths={[480, 800, 1200]} sizes="(min-width: 64rem) 45vw, 100vw" class="ba__img" />
+  <div class="ba__before">
+    <Image src={before} alt={`${beforeLabel} : ${title}`} widths={[480, 800, 1200]} sizes="(min-width: 64rem) 45vw, 100vw" class="ba__img" />
+  </div>
+  <span class="ba__label ba__label--before mono" aria-hidden="true">{beforeLabel}</span>
+  <span class="ba__label ba__label--after mono" aria-hidden="true">{afterLabel}</span>
+  <span class="ba__handle" aria-hidden="true"><i></i></span>
+  <input type="range" min="0" max="100" value="50" aria-label={`Comparer ${beforeLabel.toLowerCase()} et ${afterLabel.toLowerCase()}`} />
+</div>
+
+<style>
+  .ba {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+  }
+
+  .ba :global(.ba__img) {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .ba__before {
+    position: absolute;
+    inset: 0;
+    clip-path: inset(0 calc(100% - var(--pos)) 0 0);
+  }
+
+  .ba__label {
+    position: absolute;
+    bottom: 0.75rem;
+    z-index: 1;
+    padding: 0.3rem 0.55rem;
+    border-radius: 5px;
+    background: rgb(0 0 0 / 0.65);
+    color: #fff;
+    font-size: 0.58rem;
+  }
+
+  .ba__label--before {
+    left: 0.75rem;
+  }
+
+  .ba__label--after {
+    right: 0.75rem;
+  }
+
+  .ba__handle {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: var(--pos);
+    width: 2px;
+    background: #fff;
+    transform: translateX(-50%);
+    pointer-events: none;
+  }
+
+  .ba__handle i {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 2.4rem;
+    height: 2.4rem;
+    border-radius: 50%;
+    background: var(--color-rec);
+    border: 2px solid #fff;
+    transform: translate(-50%, -50%);
+  }
+
+  .ba input {
+    position: absolute;
+    inset: 0;
+    z-index: 3;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    opacity: 0;
+    cursor: ew-resize;
+  }
+
+  .ba input:focus-visible + .ba__handle,
+  .ba:has(input:focus-visible) .ba__handle i {
+    outline: 2px solid var(--color-rec-bright);
+    outline-offset: 3px;
+  }
+</style>

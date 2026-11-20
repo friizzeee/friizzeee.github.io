@@ -1,0 +1,241 @@
+---
+/**
+ * Carte du profil Discord, reproduite d'après le vrai profil (bannière noire, avatar,
+ * nom affiché, pseudo, tag de serveur, bio). Données : `discordProfile` dans src/data/coulisses.ts,
+ * lien et pseudo : src/config/site.ts. Les couleurs internes sont celles de Discord (thème sombre).
+ *
+ * Volontairement absents : le statut « en ligne » et l'écoute Spotify, qui changent d'une minute
+ * à l'autre et seraient faux le reste du temps.
+ * L'animation d'apparition est pilotée par src/scripts/modules/coulisses.ts (attributs data-dpc).
+ */
+import { getImage } from 'astro:assets';
+import { discordProfile as p } from '../../data/coulisses';
+import { discordHref, isDiscordConfigured, site } from '../../config/site';
+import Icon from './Icon.astro';
+
+const avatar = await getImage({ src: p.avatar, width: 192, height: 192, format: 'webp' });
+const avatar2x = await getImage({ src: p.avatar, width: 384, height: 384, format: 'webp' });
+const handle = site.discord.handle;
+---
+
+<div class="dpc-stage" data-dpc-stage>
+  <article class="dpc" aria-label={`Profil Discord de ${handle}`} data-dpc data-tilt="5">
+    <div class="dpc__banner" data-dpc-part="banner" aria-hidden="true"></div>
+
+    <div class="dpc__avatar" data-dpc-part="avatar">
+      <img
+        src={avatar.src}
+        srcset={`${avatar.src} 1x, ${avatar2x.src} 2x`}
+        width="96"
+        height="96"
+        alt={`Photo de profil de ${handle} : une figurine LEGO aux cheveux bruns qui tient un livre rouge`}
+        loading="lazy"
+        decoding="async"
+      />
+    </div>
+
+    <div class="dpc__body">
+      <p class="dpc__name" data-dpc-part="name">
+        <span aria-hidden="true">{p.displayName}</span>
+        <span class="sr-only">Nom affiché : {p.displayNameSpoken}</span>
+      </p>
+
+      <p class="dpc__ids" data-dpc-part="ids">
+        <span class="dpc__user" data-dpc-user>{handle}</span>
+        <span class="dpc__tag">
+          <img src={p.tagBadge.src} width="14" height="14" alt="" />
+          <span class="sr-only">Tag du serveur :</span>
+          {p.tag}
+        </span>
+      </p>
+
+      <p class="dpc__bio" data-dpc-part="bio">
+        <em
+          ><strong
+            >{p.bio.map((part) => ('underline' in part && part.underline ? <u>{part.text}</u> : part.text))}</strong
+          ></em
+        >
+      </p>
+
+      <a
+        class="dpc__action"
+        href={discordHref}
+        target={isDiscordConfigured ? '_blank' : undefined}
+        rel={isDiscordConfigured ? 'noopener noreferrer' : undefined}
+        data-discord-link
+        data-dpc-part="action"
+      >
+        <Icon name="discord" />
+        <span>Envoyer un message</span>
+        <span class="sr-only">(ouvre le profil Discord dans un nouvel onglet)</span>
+      </a>
+    </div>
+  </article>
+</div>
+
+<style>
+  /* Le palier extérieur porte l'apparition, la carte porte l'inclinaison à la souris :
+     deux transformations séparées qui ne se marchent pas dessus. */
+  .dpc-stage {
+    perspective: 1100px;
+  }
+
+  /* Dimensions en em, base 16 px = Discord. On agrandit la carte d'un bloc via font-size. */
+  .dpc {
+    --dpc-bg: #242429;
+    --dpc-chip: #313137;
+    --dpc-text: #f2f3f5;
+    --dpc-blurple: #5865f2;
+    position: relative;
+    isolation: isolate;
+    width: 21.25em;
+    max-width: 100%;
+    border-radius: 0.5em;
+    background: var(--dpc-bg);
+    color: var(--dpc-text);
+    font-size: clamp(15px, 1.05vw, 17px);
+    line-height: 1.25;
+    overflow: hidden;
+    box-shadow:
+      0 0 0 1px rgb(255 255 255 / 0.06),
+      0 2px 6px rgb(0 0 0 / 0.5),
+      0 30px 60px -20px rgb(0 0 0 / 0.95),
+      0 40px 90px -40px rgb(229 22 42 / 0.55);
+  }
+
+  /* Reflet doux qui suit la souris (--mx / --my posés en JS) */
+  .dpc::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 3;
+    border-radius: inherit;
+    background: radial-gradient(
+      26em circle at var(--mx, 70%) var(--my, -20%),
+      rgb(255 255 255 / 0.07),
+      transparent 45%
+    );
+    pointer-events: none;
+  }
+
+  .dpc__banner {
+    height: 6.5em;
+    background: #000;
+  }
+
+  .dpc__avatar {
+    position: absolute;
+    top: 3.75em;
+    left: 1em;
+    z-index: 2;
+    width: 5.75em;
+    height: 5.75em;
+    padding: 0.375em;
+    border-radius: 50%;
+    background: var(--dpc-bg);
+  }
+
+  .dpc__avatar img {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    object-fit: cover;
+    transition: scale 0.6s var(--ease-expo);
+  }
+
+  .dpc:hover .dpc__avatar img {
+    scale: 1.04;
+  }
+
+  .dpc__body {
+    display: grid;
+    gap: 0.75em;
+    padding: 3.4em 1em 1em;
+  }
+
+  /* Lettre gothique U+1D56F : absente des polices du site, on passe par les polices mathématiques
+     présentes sur chaque système (Windows, macOS/iOS, Android). */
+  .dpc__name {
+    font-family: 'Segoe UI Symbol', 'Cambria Math', 'STIX Two Math', 'Apple Symbols', 'Noto Sans Math', serif;
+    font-size: 1.375em;
+    font-weight: 700;
+    line-height: 1.2;
+  }
+
+  .dpc__ids {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5em;
+    margin-top: -0.4em;
+    font-size: 0.875em;
+  }
+
+  .dpc__tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25em;
+    height: 1.6em;
+    padding-inline: 0.45em;
+    border-radius: 0.375em;
+    background: var(--dpc-chip);
+    font-size: 0.86em;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+  }
+
+  .dpc__tag img {
+    width: 1.05em;
+    height: 1.05em;
+    image-rendering: pixelated;
+  }
+
+  /* Ligatures coupées : la police du site fondrait « -- » en tiret long, Discord affiche deux tirets */
+  .dpc__bio {
+    font-size: 0.875em;
+    line-height: 1.3;
+    overflow-wrap: anywhere;
+    font-variant-ligatures: none;
+    font-feature-settings: 'calt' 0, 'liga' 0;
+  }
+
+  .dpc__bio u {
+    text-underline-offset: 0.15em;
+  }
+
+  .dpc__action {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5em;
+    min-height: 2.75em;
+    margin-top: 0.25em;
+    border-radius: 0.5em;
+    background: var(--dpc-blurple);
+    color: #fff;
+    font-size: 0.875em;
+    font-weight: 600;
+    transition:
+      background-color 0.25s ease,
+      scale 0.3s var(--ease-expo);
+  }
+
+  .dpc__action :global(svg) {
+    width: 1.25em;
+    height: 1.25em;
+  }
+
+  .dpc__action:hover {
+    background: #4752c4;
+  }
+
+  .dpc__action:active {
+    scale: 0.98;
+  }
+
+  .dpc__action:focus-visible {
+    outline: 2px solid #fff;
+    outline-offset: 2px;
+    border-radius: 0.5em;
+  }
+</style>

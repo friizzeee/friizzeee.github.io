@@ -1,0 +1,212 @@
+---
+/**
+ * Grande carte « Me contacter sur Discord » + modèle de brief à copier.
+ */
+import { site } from '../../config/site';
+import { briefTemplate } from '../../data/process';
+import DiscordCta from '../ui/DiscordCta.astro';
+import Icon from '../ui/Icon.astro';
+---
+
+<div id="discord" class="dc card" data-hero>
+  <div class="dc__glow" aria-hidden="true"></div>
+  <div class="corners dc__corners" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+  <div class="dc__head">
+    <span class="dc__status mono"><span class="rec-dot" aria-hidden="true"></span>Contact principal</span>
+    <span class="dc__channel mono" aria-hidden="true">CH 01 · Discord</span>
+  </div>
+
+  <h2 class="dc__title">Me contacter <span class="serif">sur Discord</span></h2>
+  <p class="dc__text">
+    Envoyez-moi un message avec quelques infos sur votre projet. On échange, on cale les détails, et je
+    m’occupe du reste.
+  </p>
+
+  <DiscordCta label="Envoyer un message" class="dc__btn" />
+
+  {
+    site.discord.handle && (
+      <button type="button" class="dc__handle" data-copy={site.discord.handle}>
+        <span class="mono">Pseudo</span>
+        <span class="dc__handle-value">{site.discord.handle}</span>
+        <span class="dc__copy">
+          <Icon name="copy" />
+          <span data-copy-label>Copier</span>
+        </span>
+      </button>
+    )
+  }
+
+  <div class="dc__brief">
+    <div class="dc__brief-head">
+      <p class="mono">Modèle de premier message</p>
+      <button type="button" class="dc__copy-btn" data-copy data-copy-from="#brief-template">
+        <Icon name="copy" />
+        <span data-copy-label>Copier</span>
+      </button>
+    </div>
+    <pre id="brief-template" class="dc__template">{briefTemplate}</pre>
+  </div>
+</div>
+
+<style>
+  .dc {
+    position: relative;
+    display: grid;
+    gap: 1.4rem;
+    padding: clamp(1.75rem, 3.5vw, 2.75rem);
+    border-radius: var(--radius-xl);
+    overflow: hidden;
+    scroll-margin-top: calc(var(--header-h) + 1rem);
+  }
+
+  .dc__glow {
+    position: absolute;
+    top: -40%;
+    right: -30%;
+    z-index: -1;
+    width: 80%;
+    aspect-ratio: 1;
+    border-radius: 50%;
+    background: radial-gradient(closest-side, rgb(229 22 42 / 0.22), transparent);
+    pointer-events: none;
+  }
+
+  .dc__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .dc__corners {
+    inset: 1rem;
+    opacity: 0.5;
+  }
+
+  .dc__channel {
+    color: var(--color-fog-400);
+    font-size: 0.58rem;
+  }
+
+  .dc__status {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--color-fog-400);
+    font-size: 0.62rem;
+  }
+
+  .dc__title {
+    font-size: clamp(2rem, 3.6vw, 3rem);
+    font-weight: 560;
+    letter-spacing: -0.045em;
+    line-height: 1;
+  }
+
+  .dc__title .serif {
+    font-size: 1.08em;
+  }
+
+  .dc__text {
+    color: var(--color-fog-300);
+    max-width: 44ch;
+  }
+
+  .dc :global(.dc__btn) {
+    margin-top: 0.25rem;
+  }
+
+  .dc__handle {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.85rem 1rem;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--line);
+    background: rgb(255 255 255 / 0.02);
+    text-align: left;
+    cursor: pointer;
+    transition: border-color 0.3s ease;
+  }
+
+  .dc__handle:hover {
+    border-color: var(--line-strong);
+  }
+
+  .dc__handle .mono {
+    color: var(--color-fog-400);
+    font-size: 0.6rem;
+  }
+
+  .dc__handle-value {
+    flex: 1;
+    font-weight: 500;
+  }
+
+  .dc__copy,
+  .dc__copy-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    color: var(--color-fog-300);
+    font-size: 0.82rem;
+  }
+
+  .dc__copy :global(svg),
+  .dc__copy-btn :global(svg) {
+    width: 0.95rem;
+    height: 0.95rem;
+  }
+
+  .dc__copy-btn {
+    padding: 0.4rem 0.75rem;
+    border-radius: 999px;
+    border: 1px solid var(--line-strong);
+    cursor: pointer;
+    transition:
+      background-color 0.3s ease,
+      color 0.3s ease;
+  }
+
+  .dc__copy-btn:hover {
+    background: var(--color-fog-100);
+    color: var(--color-ink-950);
+  }
+
+  .dc__copy-btn[data-copied],
+  .dc__handle[data-copied] .dc__copy {
+    color: #3ddc84;
+  }
+
+  .dc__brief {
+    margin-top: 0.5rem;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--line);
+    background: rgb(0 0 0 / 0.3);
+    overflow: hidden;
+  }
+
+  .dc__brief-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.7rem 0.8rem 0.7rem 1rem;
+    border-bottom: 1px solid var(--line);
+    color: var(--color-fog-400);
+  }
+
+  .dc__brief-head .mono {
+    font-size: 0.6rem;
+  }
+
+  .dc__template {
+    margin: 0;
+    padding: 1rem 1.1rem 1.2rem;
+    color: var(--color-fog-300);
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    line-height: 1.75;
+    white-space: pre-wrap;
+  }
+</style>
