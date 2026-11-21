@@ -32,6 +32,7 @@ const jsonLd = {
   image: ogImage.href,
   serviceType: 'Montage vidéo',
   knowsLanguage: 'fr',
+  email: site.email,
   ...(isDiscordConfigured ? { sameAs: [site.discord.url] } : {}),
 };
 ---

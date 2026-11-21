@@ -37,6 +37,12 @@ import Icon from '../ui/Icon.astro';
     )
   }
 
+  <a class="dc__handle" href={`mailto:${site.email}`}>
+    <span class="mono">E-mail</span>
+    <span class="dc__handle-value">{site.email}</span>
+    <span class="dc__copy">Écrire</span>
+  </a>
+
   <div class="dc__brief">
     <div class="dc__brief-head">
       <p class="mono">Modèle de premier message</p>

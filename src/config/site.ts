@@ -25,6 +25,9 @@ export const site = {
     handle: 'frizze_1d',
   },
 
+  /** Adresse e-mail de contact (affichée sur la page Contact et dans le pied de page). */
+  email: 'nether.1support@gmail.com',
+
   /** Petit badge « disponible » dans l'en-tête. Passez show à false pour le masquer. */
   availability: {
     show: true,
