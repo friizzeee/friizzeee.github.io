@@ -3,11 +3,11 @@
  * « Choose Your Editing Package » : deux façons de régler (en une fois, en fin de mois),
  * chacune avec une vidéo courte et une vidéo longue. Données : src/config/payment.ts.
  *
- * Chaque façon de régler a sa ligne : une frise (une vidéo puis un paiement / les prestations du mois
- * puis un seul paiement), son explication,
- * puis ses deux offres. Les colonnes « courte » et « longue » sont les mêmes d'une ligne à l'autre.
+ * En tête, la claquette des offres de lancement (PromoSlate.astro). Puis chaque façon de régler a
+ * sa bande : une frise (une vidéo puis un paiement / les prestations du mois puis un seul paiement),
+ * son explication, puis ses deux offres. Les colonnes « courte » et « longue » sont les mêmes d'une bande à l'autre.
  * Le paiement se fait uniquement sur apa.app : chaque bouton est un simple lien.
- * Le site ne calcule aucun prix réduit, ne connecte aucun wallet et ne stocke rien.
+ * Le site ne connecte aucun wallet et ne stocke rien. Comportements : src/scripts/modules/offers.ts.
  */
 import {
   payment,
@@ -17,11 +17,13 @@ import {
   formatDay,
   isApaLink,
   activePromo,
+  promoPrice,
   packageFor,
   type Billing,
   type Package,
   type VideoFormat,
 } from '../../config/payment';
+import PromoSlate from './PromoSlate.astro';
 import TrackLabel from '../ui/TrackLabel.astro';
 import Button from '../ui/Button.astro';
 import DiscordButton from '../ui/DiscordButton.astro';
@@ -47,54 +49,67 @@ const modes = (Object.keys(billings) as Billing[]).map((key) => ({
   offers: formatOrder.map((f) => packageFor(key, f)).filter((p): p is Package => p !== undefined),
 }));
 
-/** Petit viseur de format à côté du nom : vertical ou horizontal. */
-const ratioOf: Record<VideoFormat, string> = { short: 'vertical', long: 'wide' };
+/** Cadre au vrai format de la vidéo, à côté du nom. */
+const ratioOf: Record<VideoFormat, string> = { short: '9:16', long: '16:9' };
 
 /** Nom complet lu par les lecteurs d'écran sur le bouton de paiement. */
 const spoken = (p: Package): string =>
   `Payer sur Apa : ${formats[p.format].name}, ${billings[p.billing].title.toLowerCase()}, ${formatUsd(p.amount)} dollars (nouvel onglet)`;
 
-/** Les promos en cours, pour la question « code promo » de la FAQ (chacune disparaît à sa date limite). */
+/** Les promos en cours, pour la FAQ (chacune disparaît à sa date limite). */
 const promoLines = payment.packages.flatMap((p) => {
   const promo = activePromo(p);
   if (!promo) return [];
-  const until = promo.until ? `, jusqu’au ${formatDay(promo.until)}` : '';
+  const until = promo.until ? `, jusqu’au ${formatDay(promo.until)} inclus` : '';
   return [
     {
-      text: `${promo.code} : −${promo.percent} % sur la ${formats[p.format].name.toLowerCase()} en ${billings[p.billing].title.toLowerCase()}${until}.`,
+      text: `${promo.code} : ${formatUsd(promoPrice(p, promo))} $ au lieu de ${formatUsd(p.amount)} $ (−${promo.percent} %) sur la ${formats[p.format].name.toLowerCase()} en ${billings[p.billing].title.toLowerCase()}${until}.`,
       until: promo.until,
     },
   ];
 });
 
+/** Date de fin commune des promos, pour la question « réductions permanentes ? ». */
+const promoEnds = [...new Set(promoLines.map((l) => l.until).filter((u): u is string => Boolean(u)))];
+
 /* Réponses tirées des pages Apa et des modalités fixées par nether. */
-const faq: { q: string; a: string; codes?: typeof promoLines }[] = [
+const faq: { q: string; a: string; codes?: typeof promoLines; until?: string }[] = [
   {
-    q: 'Paiement en une fois ou en fin de mois\u00a0: lequel choisir\u00a0?',
-    a: 'Pour une vidéo précise, le paiement en une fois\u00a0: vous réglez dès la vidéo livrée. Si nous travaillons ensemble régulièrement, le paiement en fin de mois\u00a0: les prestations du mois sont réglées en une seule fois, à la fin du mois. Cette formule est proposée une fois qu’une relation de confiance est installée.',
+    q: 'Paiement en une fois ou en fin de mois : lequel choisir ?',
+    a: 'Pour une vidéo précise, le paiement en une fois : vous réglez dès la vidéo livrée. Si nous travaillons ensemble régulièrement, le paiement en fin de mois : les prestations du mois sont réglées en une seule fois, à la fin du mois. Cette formule est proposée une fois qu’une relation de confiance est installée.',
   },
   {
-    q: 'Le paiement en fin de mois est-il un abonnement\u00a0?',
+    q: 'Le paiement en fin de mois est-il un abonnement ?',
     a: 'Non. Il n’y a ni abonnement ni prélèvement automatique. On convient ensemble des prestations du mois, je les réalise, puis vous réglez le tout en une seule fois à la fin du mois, sur la page Apa de l’offre.',
   },
   {
-    q: 'Vidéo courte ou vidéo longue\u00a0?',
+    q: 'Vidéo courte ou vidéo longue ?',
     a: 'La vidéo courte est un format vertical 9:16, pour TikTok et Instagram Reels. La vidéo longue est un format YouTube 16:9 de 10 minutes et plus, ma spécialité.',
   },
   ...(promoLines.length
     ? [
         {
-          q: 'Comment utiliser un code promo\u00a0?',
-          a: 'Copiez le code affiché sur l’offre, ouvrez sa page Apa avec le bouton, puis saisissez-le dans « Have a promo code? ». La réduction est appliquée par Apa au moment du paiement.',
+          q: 'Comment utiliser un code promo ?',
+          a: 'Copiez le code affiché sur l’offre, ouvrez sa page Apa avec le bouton, puis saisissez-le dans « Have a promo code? ». La réduction est appliquée par Apa au moment du paiement. Chaque code ne fonctionne que sur son offre.',
           codes: promoLines,
+          until: promoEnds.length === 1 ? promoEnds[0] : undefined,
+        },
+      ]
+    : []),
+  ...(promoEnds.length === 1
+    ? [
+        {
+          q: 'Les réductions sont-elles permanentes ?',
+          a: `Non. Ce sont des offres de lancement, valables jusqu’au ${formatDay(promoEnds[0], true)} inclus. Passé cette date, les codes ne fonctionnent plus et les offres reviennent à leur prix normal.`,
+          until: promoEnds[0],
         },
       ]
     : []),
   {
-    q: 'Comment se passe le paiement\u00a0?',
-    a: 'Rien n’est à payer pour commander\u00a0: on définit d’abord le projet sur Discord. Le moment venu, le bouton de l’offre ouvre sa page Apa dans un nouvel onglet. Vous y payez en crypto\u00a0: USDT, USDC, BTC, ETH, SOL et d’autres devises.',
+    q: 'Comment se passe le paiement ?',
+    a: 'Rien n’est à payer pour commander : on définit d’abord le projet sur Discord. Le moment venu, le bouton de l’offre ouvre sa page Apa dans un nouvel onglet. Vous y payez en crypto : USDT, USDC, BTC, ETH, SOL et d’autres devises.',
   },
-  ...(withSafety ? [] : [{ q: 'Comment reconnaître un vrai lien de paiement\u00a0?', a: payment.safety }]),
+  ...(withSafety ? [] : [{ q: 'Comment reconnaître un vrai lien de paiement ?', a: payment.safety }]),
 ];
 ---
 
@@ -107,6 +122,8 @@ const faq: { q: string; a: string; codes?: typeof promoLines }[] = [
       <h2 class="h2" data-reveal="lines">Choose Your <span class="serif">Editing Package.</span></h2>
       <p class="lead" data-reveal="fade">{payment.intro}</p>
     </header>
+
+    <PromoSlate id={id} />
 
     <!-- Petit écran : les deux modes sont loin l'un de l'autre, on peut sauter directement au bon -->
     <nav class="pk__jump" aria-label="Modes de paiement" data-reveal="fade">
@@ -160,9 +177,23 @@ const faq: { q: string; a: string; codes?: typeof promoLines }[] = [
                 const f = formats[p.format];
                 const promo = activePromo(p);
                 const featured = promo?.highlight === true;
+                const reduced = promo ? promoPrice(p, promo) : p.amount;
+                const fullPrice = (
+                  <p class="pkg__amount">
+                    {Number.isInteger(p.amount) ? (
+                      <span data-count={p.amount} data-count-duration="1.6">
+                        {formatUsd(p.amount)}
+                      </span>
+                    ) : (
+                      formatUsd(p.amount)
+                    )}
+                    <span class="pkg__cur">$</span>
+                  </p>
+                );
                 return (
                   <li
                     class:list={['pkg card', promo && 'pkg--promo', featured && 'pkg--featured']}
+                    id={`${id}-${p.id}`}
                     data-tilt="3"
                     data-offer={p.id}
                     data-promo-until={promo?.until}
@@ -180,27 +211,43 @@ const faq: { q: string; a: string; codes?: typeof promoLines }[] = [
                         <h4 class="h3 pkg__name">{f.name}</h4>
                         <p class="pkg__format mono">{f.spec}</p>
                       </div>
-                      <span class:list={['pkg__ratio', `pkg__ratio--${ratioOf[p.format]}`]} aria-hidden="true">
-                        <i />
+                      <span class:list={['pkg__frame', `pkg__frame--${p.format}`]} aria-hidden="true">
+                        <span class="pkg__frame-rec" />
+                        <span class="pkg__frame-ratio mono">{ratioOf[p.format]}</span>
                       </span>
                     </div>
 
                     <div class="pkg__price">
-                      <p class="pkg__amount">
-                        {Number.isInteger(p.amount) ? (
-                          <span data-count={p.amount} data-count-duration="1.6">
-                            {formatUsd(p.amount)}
+                      {promo ? (
+                        <>
+                          <p class="pkg__was" data-promo>
+                            <s>
+                              <span class="sr-only">Prix normal : </span>
+                              {formatUsd(p.amount)}&nbsp;$
+                            </s>
+                            <span class="pkg__strike" aria-hidden="true" data-price-strike />
+                          </p>
+                          <p class="pkg__amount" data-promo data-price-from={p.amount} data-price-to={reduced}>
+                            <span class="sr-only">Avec le code {promo.code} : </span>
+                            <span data-price-value>{formatUsd(reduced)}</span>
+                            <span class="pkg__cur">$</span>
+                          </p>
+                          <p class="pkg__unit mono" data-promo>
+                            USD avec le code {promo.code}
+                          </p>
+                          <div class="pkg__expired" data-promo-off hidden>
+                            {fullPrice}
+                            <p class="pkg__unit mono">{m.unit}</p>
+                          </div>
+                          <span class="pkg__badge" data-promo>
+                            −{promo.percent}&nbsp;%
                           </span>
-                        ) : (
-                          formatUsd(p.amount)
-                        )}
-                        <span class="pkg__cur">$</span>
-                      </p>
-                      <p class="pkg__unit mono">{m.unit}</p>
-                      {promo && (
-                        <span class="pkg__badge mono" data-promo>
-                          −{promo.percent}&nbsp;%
-                        </span>
+                        </>
+                      ) : (
+                        <>
+                          {fullPrice}
+                          <p class="pkg__unit mono">{m.unit}</p>
+                        </>
                       )}
                     </div>
 
@@ -209,12 +256,12 @@ const faq: { q: string; a: string; codes?: typeof promoLines }[] = [
                     <div class="pkg__extra">
                       {promo && (
                         <div class="pkg__promo" data-promo>
-                          <p class="pkg__promo-text">
-                            {promo.label && <>{promo.label}&nbsp;: </>}
-                            <strong>−{promo.percent}&nbsp;%</strong> avec ce code, à saisir sur la page Apa dans
-                            «&nbsp;Have a promo code?&nbsp;».
-                          </p>
-                          <button type="button" class="pkg__code" data-copy={promo.code}>
+                          <button
+                            type="button"
+                            class="pkg__code"
+                            data-copy={promo.code}
+                            aria-label={`Copier le code ${promo.code}`}
+                          >
                             <span class="pkg__code-value">{promo.code}</span>
                             <span class="pkg__code-action">
                               <Icon name="copy" />
@@ -223,10 +270,13 @@ const faq: { q: string; a: string; codes?: typeof promoLines }[] = [
                               </span>
                             </span>
                           </button>
+                          <p class="pkg__promo-text">À saisir sur la page Apa, dans «&nbsp;Have a promo code?&nbsp;».</p>
                           {promo.until && (
                             <p class="pkg__until">
                               <span class="rec-dot" aria-hidden="true" />
-                              Valable jusqu’au {formatDay(promo.until)}
+                              <span>
+                                Offre limitée, jusqu’au <strong>{formatDay(promo.until, true)}</strong> inclus
+                              </span>
                             </p>
                           )}
                         </div>
@@ -282,7 +332,7 @@ const faq: { q: string; a: string; codes?: typeof promoLines }[] = [
         <h3 class="pk__side-title">Questions sur les offres</h3>
         {
           faq.map((item) => (
-            <details class="pk__qa" name={`${id}-faq`}>
+            <details class="pk__qa" name={`${id}-faq`} data-promo-until={item.until}>
               <summary>
                 <span>{item.q}</span>
                 <span class="pk__qa-icon" aria-hidden="true">
@@ -326,21 +376,6 @@ const faq: { q: string; a: string; codes?: typeof promoLines }[] = [
     }
   </div>
 </section>
-
-<script>
-  /* Une promo dont la date limite est passée disparaît, même si le site n'a pas été reconstruit depuis.
-     Même règle que promoEnd() dans src/config/payment.ts (fin du dernier jour, heure locale),
-     recopiée ici pour ne pas embarquer toute la configuration dans la page. */
-  document.addEventListener('astro:page-load', () => {
-    document.querySelectorAll<HTMLElement>('[data-promo-until]').forEach((el) => {
-      if (Date.now() <= new Date(`${el.dataset.promoUntil}T23:59:59`).getTime()) return;
-      if (!el.matches('.pkg')) return el.remove();
-      el.classList.remove('pkg--promo', 'pkg--featured');
-      el.querySelector('.btn--primary')?.classList.remove('btn--primary');
-      el.querySelectorAll('[data-promo]').forEach((promo) => promo.remove());
-    });
-  });
-</script>
 
 <style>
   /* ── Section ────────────────────────────────── */
@@ -425,9 +460,28 @@ const faq: { q: string; a: string; codes?: typeof promoLines }[] = [
   }
 
   .pk__mode {
+    position: relative;
     display: grid;
     gap: 1.75rem;
     scroll-margin-top: calc(var(--header-h) + 1.5rem);
+  }
+
+  /* Fin de mois : une bande à part, un ton plus claire et hachurée, pour qu'on ne la confonde pas
+     avec le paiement en une fois. La bande va d'un bord à l'autre de l'écran. */
+  .pk__mode--fin-de-mois {
+    padding-block: clamp(3rem, 6vw, 4.5rem);
+  }
+
+  .pk__mode--fin-de-mois::before {
+    content: '';
+    position: absolute;
+    inset: 0 calc(50% - 50vw);
+    z-index: -1;
+    border-block: 1px solid var(--line);
+    background:
+      repeating-linear-gradient(-45deg, rgb(255 255 255 / 0.018) 0 1px, transparent 1px 14px),
+      linear-gradient(180deg, var(--color-ink-900), rgb(10 10 12 / 0.6));
+    pointer-events: none;
   }
 
   @media (min-width: 64rem) {
@@ -655,45 +709,73 @@ const faq: { q: string; a: string; codes?: typeof promoLines }[] = [
     font-size: 0.6rem;
   }
 
-  /* ── Viseur de format (9:16, 16:9) ───────────── */
-  .pkg__ratio {
-    display: grid;
-    place-items: center;
+  /* ── Cadre au vrai format de la vidéo (9:16 debout, 16:9 couché), même hauteur ── */
+  .pkg__frame {
+    position: relative;
     flex: none;
-    width: 2.75rem;
-    height: 2.75rem;
-    border-radius: var(--radius-sm);
-    border: 1px solid var(--line);
-    background: rgb(255 255 255 / 0.02);
+    height: 4.5rem;
+    border-radius: 7px;
+    border: 1.5px solid var(--line-strong);
+    /* Croix de centrage, comme dans un moniteur de montage */
+    background:
+      linear-gradient(var(--line-strong), var(--line-strong)) center / 1px 0.9rem no-repeat,
+      linear-gradient(var(--line-strong), var(--line-strong)) center / 0.9rem 1px no-repeat,
+      rgb(255 255 255 / 0.02);
     transition:
-      border-color 0.5s ease,
-      background-color 0.5s ease;
+      border-color 0.5s var(--ease-expo),
+      background-color 0.5s var(--ease-expo);
   }
 
-  .pkg__ratio i {
-    display: block;
-    border: 1.5px solid var(--color-fog-400);
-    border-radius: 4px;
-    transition: border-color 0.5s ease;
+  .pkg__frame--short {
+    aspect-ratio: 9 / 16;
   }
 
-  .pkg__ratio--vertical i {
-    width: 0.95rem;
-    height: 1.7rem;
+  .pkg__frame--long {
+    aspect-ratio: 16 / 9;
   }
 
-  .pkg__ratio--wide i {
-    width: 1.9rem;
-    height: 1.07rem;
+  .pkg__frame-ratio {
+    position: absolute;
+    right: 0.3rem;
+    bottom: 0.15rem;
+    color: var(--color-fog-400);
+    font-size: 0.5rem;
+    letter-spacing: 0.04em;
   }
 
-  .pkg:hover .pkg__ratio {
-    border-color: rgb(255 77 90 / 0.4);
-    background: rgb(229 22 42 / 0.08);
+  .pkg__frame-rec {
+    position: absolute;
+    top: 0.35rem;
+    left: 0.35rem;
+    width: 0.32rem;
+    height: 0.32rem;
+    border-radius: 50%;
+    background: var(--color-fog-500);
+    transition:
+      background-color 0.3s ease,
+      box-shadow 0.3s ease;
   }
 
-  .pkg:hover .pkg__ratio i {
+  @media (max-width: 39.99rem) {
+    .pkg__frame {
+      height: 3.4rem;
+    }
+  }
+
+  .pkg--promo .pkg__frame {
+    border-color: rgb(255 77 90 / 0.45);
+  }
+
+  /* Au survol, le cadre passe en enregistrement */
+  .pkg:hover .pkg__frame {
     border-color: var(--color-rec-bright);
+    background-color: rgb(229 22 42 / 0.08);
+  }
+
+  .pkg:hover .pkg__frame-rec {
+    background: var(--color-rec);
+    box-shadow: 0 0 8px rgb(229 22 42 / 0.9);
+    animation: rec-blink 1.6s steps(1, end) infinite;
   }
 
   /* ── Prix ───────────────────────────────────── */
@@ -727,6 +809,63 @@ const faq: { q: string; a: string; codes?: typeof promoLines }[] = [
   .pkg__unit {
     color: var(--color-fog-400);
     font-size: 0.6rem;
+  }
+
+  .pkg--promo .pkg__unit {
+    color: var(--color-rec-bright);
+  }
+
+  /* Prix normal, barré d'un trait rouge (tracé en JS au premier passage) */
+  .pkg__was {
+    position: relative;
+    justify-self: start;
+    margin-bottom: 0.15rem;
+    color: var(--color-fog-400);
+    font-size: 1.1rem;
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .pkg__was s {
+    text-decoration: none;
+  }
+
+  .pkg__strike {
+    position: absolute;
+    top: 52%;
+    left: -0.2em;
+    right: -0.2em;
+    height: 2px;
+    border-radius: 2px;
+    background: var(--color-rec-bright);
+    rotate: -9deg;
+    transform-origin: left center;
+  }
+
+  .pkg__expired {
+    display: grid;
+    gap: 0.5rem;
+  }
+
+  /* Arrivée depuis un ticket de la claquette : la carte s'entoure de rouge un instant */
+  .pkg:focus {
+    outline: none;
+  }
+
+  .pkg.is-flash {
+    animation: pkg-flash 2.2s 0.45s ease-out;
+  }
+
+  @keyframes pkg-flash {
+    12%,
+    50% {
+      outline: 2px solid var(--color-rec-bright);
+      outline-offset: 5px;
+    }
+    100% {
+      outline: 2px solid transparent;
+      outline-offset: 12px;
+    }
   }
 
   .pkg__desc {
@@ -826,14 +965,18 @@ const faq: { q: string; a: string; codes?: typeof promoLines }[] = [
     overflow: hidden;
     display: inline-flex;
     align-items: center;
-    height: 1.9rem;
-    padding-inline: 0.8rem;
+    height: 2.3rem;
+    padding-inline: 0.95rem;
     border-radius: 999px;
     background: var(--color-rec);
     color: #fff;
-    font-size: 0.66rem;
+    font-size: 1.05rem;
     font-weight: 600;
-    box-shadow: 0 6px 22px -6px rgb(229 22 42 / 0.85);
+    letter-spacing: -0.03em;
+    font-variant-numeric: tabular-nums;
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.25),
+      0 8px 24px -6px rgb(229 22 42 / 0.85);
     transition: transform 0.6s var(--ease-expo);
   }
 
@@ -865,17 +1008,22 @@ const faq: { q: string; a: string; codes?: typeof promoLines }[] = [
     font-size: 0.88rem;
   }
 
-  .pkg__promo-text strong {
-    color: var(--color-rec-bright);
+  .pkg__until .rec-dot {
+    margin-top: 0.45em;
+  }
+
+  .pkg__until strong {
+    color: var(--color-fog-100);
     font-weight: 600;
   }
 
   .pkg__until {
     display: inline-flex;
-    align-items: center;
+    align-items: flex-start;
     gap: 0.55rem;
-    color: var(--color-fog-100);
-    font-size: 0.85rem;
+    color: var(--color-fog-300);
+    font-size: 0.88rem;
+    line-height: 1.45;
   }
 
   .pkg__code {

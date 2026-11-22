@@ -18,6 +18,7 @@ import { initHero } from './modules/hero';
 import { initPortfolio } from './modules/portfolio';
 import { initCopy } from './modules/copy';
 import { initCoulisses } from './modules/coulisses';
+import { initOffers } from './modules/offers';
 import { initPageCut, revealAfterCut } from './modules/cut';
 import { playIntro } from './modules/intro';
 
@@ -41,7 +42,8 @@ document.addEventListener('astro:page-load', () => {
   const entrance = isFirstLoad ? playIntro() : revealAfterCut();
   isFirstLoad = false;
 
-  cleanups.push(initChrome(), initEffects(), initPortfolio(), initCopy(), initHero(entrance), initCoulisses());
+  // initOffers d'abord : il retire les promos expirées avant que les compteurs de prix ne se branchent.
+  cleanups.push(initChrome(), initOffers(), initEffects(), initPortfolio(), initCopy(), initHero(entrance), initCoulisses());
 
   requestAnimationFrame(() => ScrollTrigger.refresh());
 });

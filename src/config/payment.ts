@@ -13,6 +13,7 @@
  *  configuré sur le lien Apa : si vous changez l'un, changez l'autre.
  * ─────────────────────────────────────────────────────────────
  */
+import { promoEnd } from '../lib/promo-date';
 
 export type Billing = 'une-fois' | 'fin-de-mois';
 export type VideoFormat = 'short' | 'long';
@@ -22,8 +23,10 @@ export interface Promo {
   active: boolean;
   /** Code à saisir par le client sur la page Apa (il doit exister dans votre tableau de bord Apa). */
   code: string;
-  /** Réduction appliquée par Apa (affichage uniquement, le site ne calcule aucun prix). */
+  /** Réduction en %, affichée sur le badge. Sert aussi au calcul du prix réduit si `amountOff` est absent. */
   percent: number;
+  /** Réduction fixe en dollars, si le coupon Apa est un montant et non un pourcentage. */
+  amountOff?: number;
   /** Nom de l'opération, affiché avant la réduction (facultatif). */
   label?: string;
   /** Dernier jour de validité (AAAA-MM-JJ). Passé cette date, la promo disparaît du site. */
@@ -80,7 +83,7 @@ export const billings: Record<
     fit: 'Pour un projet précis ou une première collaboration.',
     unit: 'USD · réglé en une fois',
     cta: 'Payer ma vidéo',
-    cadence: { label: 'Une vidéo', clips: [1], pay: 'Paiement' },
+    cadence: { label: 'Votre vidéo', clips: [1], pay: 'Paiement à la livraison' },
   },
   'fin-de-mois': {
     title: 'Paiement en fin de mois',
@@ -89,7 +92,7 @@ export const billings: Record<
     fit: 'Une solution adaptée aux collaborations régulières, proposée une fois qu’une relation de confiance est installée.',
     unit: 'USD · réglé en une fois, en fin de mois',
     cta: 'Régler le mois écoulé',
-    cadence: { label: 'Prestations du mois', clips: [3, 5, 2, 4], pay: 'Un seul paiement' },
+    cadence: { label: 'Les prestations du mois', clips: [3, 5, 2, 4], pay: 'Un seul paiement, fin du mois' },
   },
 };
 
@@ -110,7 +113,7 @@ export const payment = {
       amount: 2.35,
       href: 'https://apa.app/pay/cmwrpfsqi0030ml013su0huj7',
       // Sur Apa, SHORT30 = 0,71 $ fixes (≈ 30 % de 2,35 $) : un pourcentage marcherait aussi sur l'offre à 750 $.
-      promo: { active: true, code: 'SHORT30', percent: 30, until: '2027-02-08', highlight: true },
+      promo: { active: true, code: 'SHORT30', percent: 30, amountOff: 0.71, until: '2027-02-08', highlight: true },
     },
     {
       id: 'longue-une-fois',
@@ -132,9 +135,17 @@ export const payment = {
       format: 'long',
       amount: 750,
       href: 'https://apa.app/pay/cmwrphitr0036ml01ltg28jx4',
-      promo: { active: true, code: 'LONG50', percent: 20, label: 'Offre de lancement' },
+      // Sur Apa, LONG50 = −20 % avec 750 $ minimum (il ne s'applique donc qu'à cette offre).
+      promo: { active: true, code: 'LONG50', percent: 20, until: '2027-02-08', highlight: true },
     },
   ] satisfies Package[] as Package[],
+
+  /** Claquette des promos, au-dessus des offres (la date de fin est ajoutée automatiquement). */
+  launch: {
+    title: 'Offres de lancement',
+    after: 'Passé cette date, les codes ne fonctionnent plus et les offres reviennent à leur prix normal.',
+    fees: 'Prix avec le code, hors frais de conversion éventuels d’Apa.',
+  },
 
   /** Garanties affichées sous les offres. */
   trust: [
@@ -161,12 +172,21 @@ export const formatUsd = (value: number): string =>
     maximumFractionDigits: 2,
   }).format(value);
 
-/** Fin du dernier jour de validité, heure locale du visiteur. */
-export const promoEnd = (until: string): Date => new Date(`${until}T23:59:59`);
+export { promoEnd };
 
-/** « 2027-02-08 » → « 8 février 2027 ». */
-export const formatDay = (until: string): string =>
-  new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }).format(promoEnd(until));
+/** Prix payé avec le code, arrondi au centime (avant frais de conversion éventuels d'Apa). */
+export const promoPrice = (pkg: Package, promo: Promo): number =>
+  Math.round((promo.amountOff !== undefined ? pkg.amount - promo.amountOff : pkg.amount * (1 - promo.percent / 100)) * 100) /
+  100;
+
+/** « 2027-02-08 » → « 8 février 2027 » (ou « lundi 8 février 2027 » avec le jour). */
+export const formatDay = (until: string, withWeekday = false): string =>
+  new Intl.DateTimeFormat('fr-FR', {
+    weekday: withWeekday ? 'long' : undefined,
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  }).format(promoEnd(until));
 
 /** La promo affichée pour une offre : active et pas encore expirée (au moment du build). */
 export const activePromo = (pkg: Package): Promo | undefined =>
@@ -186,6 +206,9 @@ for (const pkg of payment.packages) {
   seen.add(pkg.href);
   if (pkg.promo?.until && Number.isNaN(promoEnd(pkg.promo.until).getTime())) {
     console.warn(`\n[nether] ⚠️  Offre « ${pkg.id} » : date de fin de promo illisible (format attendu AAAA-MM-JJ).\n`);
+  }
+  if (pkg.promo && !(promoPrice(pkg, pkg.promo) > 0 && promoPrice(pkg, pkg.promo) < pkg.amount)) {
+    console.warn(`\n[nether] ⚠️  Offre « ${pkg.id} » : le prix avec le code ${pkg.promo.code} est incohérent.\n`);
   }
 }
 for (const b of Object.keys(billings) as Billing[]) {
