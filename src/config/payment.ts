@@ -135,8 +135,8 @@ export const payment = {
       format: 'long',
       amount: 750,
       href: 'https://apa.app/pay/cmwrphitr0036ml01ltg28jx4',
-      // Sur Apa, LONG50 = −20 % avec 750 $ minimum (il ne s'applique donc qu'à cette offre).
-      promo: { active: true, code: 'LONG50', percent: 20, until: '2027-02-08', highlight: true },
+      // Sur Apa, LONG20 = −20 % avec 750 $ minimum (il ne s'applique donc qu'à cette offre), jusqu'au 08/02/2027.
+      promo: { active: true, code: 'LONG20', percent: 20, until: '2027-02-08', highlight: true },
     },
   ] satisfies Package[] as Package[],
 
