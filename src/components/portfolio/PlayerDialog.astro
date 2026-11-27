@@ -3,7 +3,7 @@
  * Lecteur plein écran partagé par toutes les vidéos du portfolio.
  * Rempli à l'ouverture, vidé à la fermeture (logique : src/scripts/modules/player.ts).
  *
- * - Fichier vidéo : commandes du site (lecture, barre découpée par chapitres, son, 720p / 480p,
+ * - Fichier vidéo : commandes du site (lecture, barre découpée par chapitres, son, HD / version légère,
  *   plein écran), raccourcis clavier, états chargement / erreur / fin de lecture.
  * - Série en plusieurs parties : bandeau des parties sous l'image, bouton « partie suivante » à la fin.
  * - YouTube : lecteur YouTube sans cookies, chargé au clic, avec ses propres commandes.
@@ -61,7 +61,7 @@ import Icon from '../ui/Icon.astro';
               <Icon name="replay" />
               Réessayer
             </button>
-            <button type="button" class="pc__action" data-pc-lighter hidden>Passer en 480p</button>
+            <button type="button" class="pc__action" data-pc-lighter hidden>Passer à la version légère</button>
           </div>
         </div>
 
@@ -103,7 +103,7 @@ import Icon from '../ui/Icon.astro';
             <p class="pc__chapter" data-pc-chapter></p>
             <span class="pc__gap"></span>
             <button type="button" class="pc__btn pc__btn--text" data-pc-quality hidden>
-              <span class="pc__pill mono" data-pc-quality-label>720p</span>
+              <span class="pc__pill mono" data-pc-quality-label>HD</span>
             </button>
             <button type="button" class="pc__btn" aria-label="Plein écran" aria-pressed="false" data-pc-full>
               <span data-icon="expand"><Icon name="expand" /></span>
@@ -118,7 +118,7 @@ import Icon from '../ui/Icon.astro';
 
     <div class="player__foot">
       <p class="player__credits" data-player-credits hidden></p>
-      <a class="player__link mono" target="_blank" rel="noopener noreferrer" data-player-link hidden>
+      <a class="player__link mono" href="https://www.youtube.com/" target="_blank" rel="noopener noreferrer" data-player-link hidden>
         Ouvrir sur YouTube
         <Icon name="arrow" />
       </a>
@@ -138,7 +138,7 @@ import Icon from '../ui/Icon.astro';
     padding: clamp(1rem, 3vw, 2.5rem);
     border: 0;
     background: rgb(6 6 7 / 0.92);
-    color: var(--color-fog-100);
+    color: var(--cream);
     overflow: auto;
   }
 
@@ -181,7 +181,7 @@ import Icon from '../ui/Icon.astro';
   }
 
   .player__meta {
-    color: var(--color-fog-400);
+    color: var(--fog-2);
   }
 
   .player__title {
@@ -199,7 +199,7 @@ import Icon from '../ui/Icon.astro';
     padding-inline: 1rem 0.8rem;
     border-radius: 999px;
     border: 1px solid var(--line-strong);
-    color: var(--color-fog-100);
+    color: var(--cream);
     cursor: pointer;
     transition:
       background-color 0.3s ease,
@@ -212,8 +212,8 @@ import Icon from '../ui/Icon.astro';
   }
 
   .player__close:hover {
-    background: var(--color-fog-100);
-    color: var(--color-ink-950);
+    background: var(--cream);
+    color: var(--night);
   }
 
   /* ── Image ──────────────────────────────────── */
@@ -224,7 +224,7 @@ import Icon from '../ui/Icon.astro';
     border-radius: var(--radius-lg);
     overflow: hidden;
     background: #000;
-    box-shadow: 0 40px 120px -30px rgb(229 22 42 / 0.35);
+    box-shadow: 0 40px 120px -30px rgb(0 0 0 / 0.35);
   }
 
   .player__screen {
@@ -287,9 +287,10 @@ import Icon from '../ui/Icon.astro';
     width: clamp(3.5rem, 9vw, 5rem);
     aspect-ratio: 1;
     border-radius: 50%;
-    background: var(--color-rec);
+    background: var(--cream);
+    color: var(--night);
     box-shadow:
-      0 14px 34px -10px rgb(229 22 42 / 0.9),
+      0 14px 34px -10px rgb(0 0 0 / 0.9),
       inset 0 1px 0 rgb(255 255 255 / 0.3);
     opacity: 0;
     translate: -50% -50%;
@@ -358,7 +359,7 @@ import Icon from '../ui/Icon.astro';
 
   .pc__over-text {
     max-width: 34ch;
-    color: var(--color-fog-300);
+    color: var(--fog);
     font-size: 0.92rem;
   }
 
@@ -407,17 +408,19 @@ import Icon from '../ui/Icon.astro';
 
   .pc__action--primary {
     border-color: transparent;
-    background: var(--color-rec);
+    background: var(--cream);
+    color: var(--night);
     box-shadow:
-      0 16px 40px -16px rgb(229 22 42 / 0.9),
+      0 16px 40px -16px rgb(0 0 0 / 0.9),
       inset 0 1px 0 rgb(255 255 255 / 0.22);
   }
 
   .pc__action--primary:hover {
     border-color: transparent;
-    background: var(--color-rec);
+    background: var(--cream);
+    color: var(--night);
     box-shadow:
-      0 20px 48px -14px rgb(229 22 42 / 0.75),
+      0 20px 48px -14px rgb(0 0 0 / 0.75),
       0 0 0 1px rgb(255 255 255 / 0.5);
   }
 
@@ -483,7 +486,8 @@ import Icon from '../ui/Icon.astro';
   }
 
   .pc__fill {
-    background: var(--color-rec);
+    background: var(--cream);
+    color: var(--night);
     transform: scaleX(var(--played));
   }
 
@@ -566,7 +570,7 @@ import Icon from '../ui/Icon.astro';
   }
 
   .pc__seek:has(.pc__range:focus-visible) {
-    outline: 2px solid var(--color-rec-bright);
+    outline: 2px solid var(--tungsten);
     outline-offset: 2px;
     border-radius: 6px;
   }
@@ -645,8 +649,8 @@ import Icon from '../ui/Icon.astro';
   }
 
   .pc__btn--text[data-hd='true'] .pc__pill {
-    border-color: var(--color-rec-bright);
-    background: rgb(229 22 42 / 0.32);
+    border-color: var(--tungsten);
+    background: rgb(239 228 200 / 0.16);
   }
 
   .pc__time {
@@ -789,8 +793,8 @@ import Icon from '../ui/Icon.astro';
     padding: 0.4rem 0.9rem 0.4rem 0.4rem;
     border-radius: var(--radius-md);
     border: 1px solid var(--line);
-    background: var(--color-ink-900);
-    color: var(--color-fog-300);
+    background: var(--night-2);
+    color: var(--fog);
     overflow: hidden;
     text-align: left;
     cursor: pointer;
@@ -802,13 +806,13 @@ import Icon from '../ui/Icon.astro';
 
   .player__parts :global(.part:hover) {
     border-color: var(--line-strong);
-    color: var(--color-fog-100);
+    color: var(--cream);
   }
 
   .player__parts :global(.part[aria-current='true']) {
     border-color: rgb(255 77 90 / 0.5);
-    background: var(--color-ink-850);
-    color: var(--color-fog-100);
+    background: var(--night-3);
+    color: var(--cream);
   }
 
   .player__parts :global(.part:focus-visible) {
@@ -849,7 +853,7 @@ import Icon from '../ui/Icon.astro';
   }
 
   .player__parts :global(.part__len) {
-    color: var(--color-fog-400);
+    color: var(--fog-2);
     font-size: 0.58rem;
   }
 
@@ -858,7 +862,8 @@ import Icon from '../ui/Icon.astro';
     position: absolute;
     inset: auto 0 0;
     height: 2px;
-    background: var(--color-rec);
+    background: var(--cream);
+    color: var(--night);
     transform: scaleX(var(--pp, 0));
     transform-origin: left;
   }
@@ -886,7 +891,7 @@ import Icon from '../ui/Icon.astro';
   }
 
   .player__credits {
-    color: var(--color-fog-400);
+    color: var(--fog-2);
     font-size: 0.8rem;
   }
 
@@ -897,7 +902,7 @@ import Icon from '../ui/Icon.astro';
     gap: 0.5rem;
     min-height: 2.75rem;
     margin-left: auto;
-    color: var(--color-fog-300);
+    color: var(--fog);
     font-size: 0.62rem;
     transition: color 0.3s ease;
   }
@@ -909,7 +914,7 @@ import Icon from '../ui/Icon.astro';
   }
 
   .player__link:hover {
-    color: var(--color-fog-100);
+    color: var(--cream);
   }
 
   .player__link:hover :global(svg) {

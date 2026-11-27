@@ -1,0 +1,252 @@
+---
+/**
+ * Une réalisation dans la liste de /portfolio : un « plan » (image, titre, fiche courte, lecture).
+ * Tout vient du projet (src/data/portfolio.ts) : ajouter un projet ajoute une ligne, rien d'autre à faire.
+ * Vertical (9:16) : jusqu'à deux affiches côte à côte. Aperçu muet au survol (works.ts).
+ */
+import { Image } from 'astro:assets';
+import { metaLine, pad, posterOf, type Project } from '../../lib/portfolio';
+import Poster from './Poster.astro';
+import PlayTrigger from './PlayTrigger.astro';
+import Icon from '../ui/Icon.astro';
+
+interface Props {
+  project: Project;
+  index: number;
+  /** Image à droite (une ligne sur deux). */
+  flip?: boolean;
+}
+
+const { project: p, index, flip = false } = Astro.props;
+const vertical = p.format === '9:16';
+const poster = await posterOf(p);
+const tall = vertical ? p.playable.filter((v) => v.poster).slice(0, 2) : [];
+const first = p.playable[0];
+const rows = [
+  p.duration && { label: 'Durée', value: p.playable.length > 1 && !vertical ? `${p.duration} · ${p.playable.length} parties` : p.duration },
+  { label: 'Créateur', value: p.creator },
+  { label: 'Type', value: p.editType },
+  p.platform && { label: 'Plateforme', value: p.platform },
+].filter((r): r is { label: string; value: string } => Boolean(r));
+---
+
+<article
+  class:list={['row', flip && 'row--flip', vertical && 'row--tall']}
+  data-project
+  data-cats={p.categories.map((c) => c.id).join(' ')}
+  aria-labelledby={`row-${p.slug}`}
+>
+  <a class="row__media" href={p.href} data-preview={p.preview ? '' : undefined} tabindex="-1" aria-hidden="true">
+    {
+      vertical && tall.length > 0 ? (
+        <span class="row__phones">
+          {tall.map((v) => (
+            <Image src={v.poster!} alt="" widths={[300, 480]} sizes="(min-width: 64rem) 16rem, 42vw" loading="lazy" />
+          ))}
+        </span>
+      ) : (
+        <span class="row__frame">
+          <Poster source={poster} alt="" sizes="(min-width: 64rem) 58vw, 100vw" />
+          {p.preview && <video muted loop playsinline preload="none" data-src={p.preview} />}
+        </span>
+      )
+    }
+  </a>
+
+  <div class="row__body">
+    <p class="label num">{pad(index + 1)} · {p.categories.map((c) => c.label).join(' · ')}</p>
+    <h2 class="row__title" id={`row-${p.slug}`}>
+      <a href={p.href} set:html={p.titleHtml} />
+    </h2>
+    {p.subtitle && <p class="row__subtitle">{p.subtitle}</p>}
+    {p.description && <p class="row__desc">{p.description}</p>}
+    <dl class="row__facts">
+      {
+        rows.map((r) => (
+          <div>
+            <dt>{r.label}</dt>
+            <dd>{r.value}</dd>
+          </div>
+        ))
+      }
+    </dl>
+    <div class="row__actions">
+      {
+        first && (
+          <PlayTrigger project={p} video={first} class="pill pill--solid">
+            <Icon name="play" />
+            {p.playable.length > 1 ? (vertical ? `Extrait 1 · ${first.duration ?? ''}` : `Partie 1 · ${first.duration ?? ''}`) : first.playLabel}
+          </PlayTrigger>
+        )
+      }
+      <a class="pill" href={p.href} aria-label={`La fiche du projet : ${p.title}`}>
+        La fiche du projet
+        <Icon name="arrow" />
+      </a>
+    </div>
+    <p class="sr-only">{metaLine(p)}</p>
+  </div>
+</article>
+
+<style>
+  .row {
+    display: grid;
+    grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+    gap: clamp(1.5rem, 4vw, 4rem);
+    align-items: center;
+    padding-block: clamp(2.5rem, 5vw, 4.5rem);
+    border-top: 1px solid var(--hair);
+  }
+
+  .row--flip {
+    grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+  }
+
+  .row--flip .row__media {
+    order: 2;
+  }
+
+  .row__media {
+    position: relative;
+    display: block;
+  }
+
+  .row__frame {
+    position: relative;
+    display: block;
+    aspect-ratio: 16 / 9;
+    overflow: hidden;
+    border-radius: var(--radius-md);
+    background: var(--night-2);
+  }
+
+  .row__frame :global(img),
+  .row__frame video {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform var(--dur-crawl) var(--ease-expo);
+  }
+
+  .row__frame video {
+    opacity: 0;
+    transition:
+      opacity var(--dur-normal) ease,
+      transform var(--dur-crawl) var(--ease-expo);
+  }
+
+  .row__media:global(.is-previewing) video {
+    opacity: 1;
+  }
+
+  .row__media:hover :global(img),
+  .row__media:hover video {
+    transform: scale(1.03);
+  }
+
+  .row__phones {
+    display: flex;
+    justify-content: center;
+    gap: clamp(0.75rem, 2vw, 1.5rem);
+  }
+
+  .row__phones :global(img) {
+    width: min(16rem, 46%);
+    aspect-ratio: 9 / 16;
+    object-fit: cover;
+    border-radius: var(--radius-md);
+    box-shadow: 0 1.5rem 3rem -1.5rem rgb(0 0 0 / 0.9);
+  }
+
+  .row__phones :global(img:last-child) {
+    translate: 0 1.5rem;
+  }
+
+  .row__body {
+    display: grid;
+    gap: 0.9rem;
+    justify-items: start;
+  }
+
+  .row__title {
+    font-size: clamp(2rem, 4.2vw, 3.6rem);
+    font-weight: 760;
+    font-stretch: 118%;
+    letter-spacing: -0.035em;
+    line-height: 0.98;
+    text-wrap: balance;
+  }
+
+  .row__title :global(em) {
+    font-family: var(--script);
+    font-size: 1.3em;
+    font-style: normal;
+    font-weight: 400;
+    letter-spacing: 0;
+    color: var(--tungsten);
+  }
+
+  .row__title a {
+    background: linear-gradient(currentColor, currentColor) left bottom / 0 2px no-repeat;
+    transition: background-size var(--dur-slow) var(--ease-expo);
+  }
+
+  .row__title a:hover {
+    background-size: 100% 2px;
+  }
+
+  .row__subtitle {
+    color: var(--fog);
+    font-weight: 540;
+  }
+
+  .row__desc {
+    max-width: 34rem;
+    color: var(--fog);
+  }
+
+  .row__facts {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.6rem 1.5rem;
+    width: 100%;
+    max-width: 30rem;
+    margin: 0.3rem 0 0;
+    padding-top: 0.9rem;
+    border-top: 1px solid var(--hair);
+  }
+
+  .row__facts dt {
+    color: var(--fog-2);
+    font-size: 0.6875rem;
+    font-weight: 620;
+    font-stretch: 125%;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  .row__facts dd {
+    margin: 0.15rem 0 0;
+    font-weight: 560;
+  }
+
+  .row__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.4rem;
+  }
+
+  @media (max-width: 56rem) {
+    .row,
+    .row--flip {
+      grid-template-columns: 1fr;
+    }
+
+    .row--flip .row__media {
+      order: 0;
+    }
+  }
+</style>

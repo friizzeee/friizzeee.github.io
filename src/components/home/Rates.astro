@@ -1,0 +1,915 @@
+---
+/**
+ * Les tarifs, sur papier : une feuille de tarifs.
+ * Colonnes = les deux formats (vidéo courte 9:16, vidéo longue 16:9), lignes = les deux façons de régler
+ * (en une fois, en fin de mois). Au-dessus, les offres de lancement (codes, date limite, compte à rebours).
+ * Tout vient de src/config/payment.ts : montants, liens Apa, codes, dates. Rien n'est écrit en dur ici.
+ * Le paiement se fait uniquement sur apa.app : chaque bouton est un simple lien.
+ * Comportements (promos expirées, compte à rebours, tampons) : src/scripts/modules/rates.ts.
+ */
+import {
+  payment,
+  billings,
+  formats,
+  formatUsd,
+  formatDay,
+  isApaLink,
+  activePromo,
+  promoPrice,
+  packageFor,
+  type Billing,
+  type Package,
+  type VideoFormat,
+} from '../../config/payment';
+import { discordHref, isDiscordConfigured } from '../../config/site';
+import Icon from '../ui/Icon.astro';
+
+interface Props {
+  /** id de la section (ancre). */
+  id?: string;
+  /** Affiche l'encadré de sécurité (page Contact). */
+  withSafety?: boolean;
+}
+
+const { id = 'tarifs', withSafety = false } = Astro.props;
+
+const formatOrder: VideoFormat[] = ['short', 'long'];
+const billingOrder = Object.keys(billings) as Billing[];
+const ratio: Record<VideoFormat, string> = { short: '9:16', long: '16:9' };
+const external = isDiscordConfigured ? { target: '_blank', rel: 'noopener noreferrer' } : {};
+
+/** Nom complet lu par les lecteurs d'écran sur le bouton de paiement. */
+const spoken = (p: Package): string =>
+  `Payer sur Apa : ${formats[p.format].name}, ${billings[p.billing].title.toLowerCase()}, ${formatUsd(p.amount)} dollars (nouvel onglet)`;
+
+const promos = payment.packages.flatMap((p) => {
+  const promo = activePromo(p);
+  return promo ? [{ p, promo, price: promoPrice(p, promo) }] : [];
+});
+// shortcut: le bandeau suppose une date de fin commune à toutes les promos ; avec des dates différentes, il se masque.
+const ends = [...new Set(promos.map((x) => x.promo.until).filter((u): u is string => Boolean(u)))];
+const until = ends.length === 1 ? ends[0] : undefined;
+
+/* Réponses tirées des pages Apa et des modalités fixées par nether (reprises de l'ancien site). */
+const promoLines = promos.map(({ p, promo, price }) => ({
+  text: `${promo.code} : ${formatUsd(price)} $ au lieu de ${formatUsd(p.amount)} $ (−${promo.percent} %) sur la ${formats[p.format].name.toLowerCase()} en ${billings[p.billing].title.toLowerCase()}${promo.until ? `, jusqu’au ${formatDay(promo.until)} inclus` : ''}.`,
+  until: promo.until,
+}));
+
+const faq: { q: string; a: string; codes?: typeof promoLines; until?: string }[] = [
+  {
+    q: 'Paiement en une fois ou en fin de mois : lequel choisir ?',
+    a: 'Pour une vidéo précise, le paiement en une fois : vous réglez dès la vidéo livrée. Si nous travaillons ensemble régulièrement, le paiement en fin de mois : les prestations du mois sont réglées en une seule fois, à la fin du mois. Cette formule est proposée une fois qu’une relation de confiance est installée.',
+  },
+  {
+    q: 'Le paiement en fin de mois est-il un abonnement ?',
+    a: 'Non. Il n’y a ni abonnement ni prélèvement automatique. On convient ensemble des prestations du mois, je les réalise, puis vous réglez le tout en une seule fois à la fin du mois, sur la page Apa de l’offre.',
+  },
+  {
+    q: 'Vidéo courte ou vidéo longue ?',
+    a: 'La vidéo courte est un format vertical 9:16, pour TikTok et Instagram Reels. La vidéo longue est un format YouTube 16:9 de 10 minutes et plus, ma spécialité.',
+  },
+  ...(promoLines.length
+    ? [
+        {
+          q: 'Comment utiliser un code promo ?',
+          a: 'Copiez le code affiché sur l’offre, ouvrez sa page Apa avec le bouton, puis saisissez-le dans « Have a promo code? ». La réduction est appliquée par Apa au moment du paiement. Chaque code ne fonctionne que sur son offre.',
+          codes: promoLines,
+          until,
+        },
+      ]
+    : []),
+  ...(until
+    ? [
+        {
+          q: 'Les réductions sont-elles permanentes ?',
+          a: `Non. Ce sont des offres de lancement, valables jusqu’au ${formatDay(until, true)} inclus. Passé cette date, les codes ne fonctionnent plus et les offres reviennent à leur prix normal.`,
+          until,
+        },
+      ]
+    : []),
+  {
+    q: 'Comment se passe le paiement ?',
+    a: 'Rien n’est à payer pour commander : on définit d’abord le projet sur Discord. Le moment venu, le bouton de l’offre ouvre sa page Apa dans un nouvel onglet. Vous y payez en crypto : USDT, USDC, BTC, ETH, SOL et d’autres devises.',
+  },
+  ...(withSafety ? [] : [{ q: 'Comment reconnaître un vrai lien de paiement ?', a: payment.safety }]),
+];
+
+const [dd, mm, yy] = until ? [until.slice(8, 10), until.slice(5, 7), until.slice(2, 4)] : [];
+---
+
+<section id={id} class="rates paper" data-spy="tarifs" aria-labelledby={`${id}-title`}>
+  <div class="wrap">
+    <header class="rates__head">
+      <p class="label">Tarifs</p>
+      <h2 class="h-title" id={`${id}-title`} data-reveal>Deux formats, deux façons de régler.</h2>
+      <p class="lede rates__intro" data-reveal data-reveal-delay="0.08">{payment.intro}</p>
+    </header>
+
+    {
+      until && (
+        <aside class="launch" aria-labelledby={`${id}-launch`} data-promo-until={until}>
+          <div class="launch__when">
+            <h3 class="launch__title" id={`${id}-launch`}>
+              {payment.launch.title}
+            </h3>
+            <p class="launch__date">
+              Jusqu’au <time datetime={until}>{formatDay(until, true)}</time> inclus
+            </p>
+            <p class="launch__count num" data-countdown={until} hidden>
+              <span aria-hidden="true">
+                <span data-countdown-prefix>J−</span>
+                <span data-countdown-days />
+              </span>
+              <span class="sr-only" data-countdown-spoken />
+            </p>
+            <p class="launch__count launch__count--fallback num" aria-hidden="true" data-countdown-fallback>
+              {dd}.{mm}.{yy}
+            </p>
+          </div>
+
+          <ul class="launch__tickets">
+            {promos.map(({ p, promo, price }) => (
+              <li class="ticket">
+                <span class="ticket__off">−{promo.percent}&nbsp;%</span>
+                <span class="ticket__what">
+                  <strong>{formats[p.format].name}</strong>
+                  {billings[p.billing].title}
+                </span>
+                <span class="ticket__price num">
+                  <s>
+                    <span class="sr-only">au lieu de </span>
+                    {formatUsd(p.amount)}&nbsp;$
+                  </s>
+                  <strong>{formatUsd(price)}&nbsp;$</strong>
+                </span>
+                <button type="button" class="ticket__code" data-copy={promo.code}>
+                  <span class="num">{promo.code}</span>
+                  <Icon name="copy" />
+                  <span class="ticket__done" data-copy-label aria-live="polite">
+                    Copier
+                  </span>
+                </button>
+                <a class="ticket__go" href={`#${id}-${p.id}`}>
+                  Voir l’offre
+                </a>
+              </li>
+            ))}
+          </ul>
+
+          <p class="launch__after">
+            {payment.launch.after} {payment.launch.fees}
+          </p>
+        </aside>
+      )
+    }
+
+    <div class="sheet" role="table" aria-label="Offres et tarifs">
+      <div class="sheet__row sheet__row--head" role="row">
+        <span class="sheet__corner" role="columnheader"><span class="sr-only">Façon de régler</span></span>
+        {
+          formatOrder.map((f) => (
+            <div class="sheet__format" role="columnheader">
+              <span class:list={['frame', `frame--${f}`]} aria-hidden="true">
+                <span class="label">{ratio[f]}</span>
+              </span>
+              <div>
+                <h3 class="sheet__format-name">{formats[f].name}</h3>
+                <p class="label">{formats[f].spec}</p>
+                <p class="sheet__format-desc">{formats[f].description}</p>
+              </div>
+            </div>
+          ))
+        }
+      </div>
+
+      {
+        billingOrder.map((b) => {
+          const mode = billings[b];
+          return (
+            <div class:list={['sheet__row', `sheet__row--${b}`]} role="row" id={`${id}-${b}`}>
+              <div class="sheet__mode" role="rowheader">
+                <h3 class="sheet__mode-title">{mode.title}</h3>
+                <p>{mode.text}</p>
+                {mode.note && <p class="sheet__note">{mode.note}</p>}
+                <p class="sheet__fit">
+                  <Icon name="check" />
+                  {mode.fit}
+                </p>
+              </div>
+
+              {formatOrder.map((f) => {
+                const p = packageFor(b, f);
+                if (!p) return <div class="offer offer--missing" role="cell" />;
+                const promo = activePromo(p);
+                const reduced = promo ? promoPrice(p, promo) : p.amount;
+                return (
+                  <div
+                    class:list={['offer', promo && 'offer--promo']}
+                    role="cell"
+                    id={`${id}-${p.id}`}
+                    tabindex="-1"
+                    data-offer={p.id}
+                    data-promo-until={promo?.until}
+                  >
+                    <p class="offer__format label">
+                      {formats[f].name} · {ratio[f]}
+                    </p>
+
+                    {promo ? (
+                      <>
+                        <p class="offer__was num" data-promo>
+                          <s>
+                            <span class="sr-only">Prix normal : </span>
+                            {formatUsd(p.amount)}&nbsp;$
+                          </s>
+                        </p>
+                        <p class="offer__price num" data-promo>
+                          <span class="sr-only">Avec le code {promo.code} : </span>
+                          {formatUsd(reduced)}
+                          <span class="offer__cur">$</span>
+                        </p>
+                        <p class="offer__unit" data-promo>
+                          USD avec le code {promo.code}
+                        </p>
+                        <span class="stamp" aria-hidden="true" data-promo data-stamp>
+                          −{promo.percent}&nbsp;%
+                        </span>
+                        <div data-promo-off hidden>
+                          <p class="offer__price num">
+                            {formatUsd(p.amount)}
+                            <span class="offer__cur">$</span>
+                          </p>
+                          <p class="offer__unit">{mode.unit}</p>
+                        </div>
+                        <div class="offer__promo" data-promo>
+                          <button type="button" class="offer__code" data-copy={promo.code}>
+                            <span class="num">{promo.code}</span>
+                            <span class="offer__copy">
+                              <Icon name="copy" />
+                              <span data-copy-label aria-live="polite">
+                                Copier
+                              </span>
+                            </span>
+                          </button>
+                          <p>À saisir sur la page Apa, dans « Have a promo code? ».</p>
+                          {promo.until && (
+                            <p class="offer__until">
+                              Offre limitée, jusqu’au <strong>{formatDay(promo.until, true)}</strong> inclus
+                            </p>
+                          )}
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <p class="offer__price num">
+                          {formatUsd(p.amount)}
+                          <span class="offer__cur">$</span>
+                        </p>
+                        <p class="offer__unit">{mode.unit}</p>
+                      </>
+                    )}
+
+                    <div class="offer__foot">
+                      {isApaLink(p.href) ? (
+                        <a class:list={['pill', 'pill--lg', promo ? 'pill--solid' : '']} href={p.href} target="_blank" rel="noopener noreferrer" aria-label={spoken(p)}>
+                          {mode.cta}
+                          <Icon name="arrow" />
+                        </a>
+                      ) : (
+                        import.meta.env.DEV && <span class="offer__warn">⚠ Lien Apa invalide dans src/config/payment.ts</span>
+                      )}
+                      <span class="offer__host">
+                        <Icon name="shield" />
+                        Paiement hébergé sur apa.app
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          );
+        })
+      }
+    </div>
+
+    <div class="rates__after">
+      <div class="rates__start">
+        <h3 class="rates__side-title">Pas encore de projet en cours ?</h3>
+        <p>
+          Commencez par un message sur Discord : rien n’est à payer pour commander. On définit ensemble le projet et
+          l’offre qui lui correspond, puis vous réglez avec le bouton de cette offre.
+        </p>
+        <a class="pill pill--solid pill--lg" href={discordHref} {...external}>
+          <Icon name="discord" />
+          Parler de mon projet
+        </a>
+      </div>
+
+      <div class="rates__faq">
+        <h3 class="rates__side-title">Questions sur les tarifs</h3>
+        {
+          faq.map((item) => (
+            <details class="qa" name={`${id}-faq`} data-promo-until={item.until}>
+              <summary>
+                <span>{item.q}</span>
+                <Icon name="plus" />
+              </summary>
+              <p>{item.a}</p>
+              {item.codes && (
+                <ul class="qa__codes">
+                  {item.codes.map((c) => (
+                    <li data-promo-until={c.until}>{c.text}</li>
+                  ))}
+                </ul>
+              )}
+            </details>
+          ))
+        }
+      </div>
+    </div>
+
+    <ul class="rates__trust" aria-label="Sécurité du paiement">
+      {
+        payment.trust.map((t) => (
+          <li>
+            <Icon name="check" />
+            {t}
+          </li>
+        ))
+      }
+    </ul>
+
+    {
+      withSafety && (
+        <aside class="rates__safety" aria-label="Sécurité">
+          <Icon name="shield" />
+          <p>{payment.safety}</p>
+        </aside>
+      )
+    }
+  </div>
+</section>
+
+<style>
+  .rates {
+    padding-block: clamp(5rem, 10vw, 8.5rem);
+    border-top: 1px solid var(--rule);
+  }
+
+  .rates__head {
+    display: grid;
+    gap: 1.1rem;
+    max-width: 50rem;
+  }
+
+  .rates__intro {
+    color: var(--fg-soft);
+  }
+
+  /* ── Offres de lancement ── */
+  .launch {
+    display: grid;
+    grid-template-columns: minmax(0, 4fr) minmax(0, 8fr);
+    gap: 1.25rem 2.5rem;
+    margin-top: clamp(2.5rem, 5vw, 4rem);
+    padding: clamp(1.25rem, 2.5vw, 2rem);
+    border: 1px solid var(--ink);
+    border-radius: var(--radius-lg);
+    background: var(--paper-2);
+  }
+
+  .launch__title {
+    font-size: clamp(1.4rem, 2vw, 1.8rem);
+    font-weight: 760;
+    font-stretch: 112%;
+    letter-spacing: -0.025em;
+  }
+
+  .launch__date {
+    margin-top: 0.3rem;
+    color: var(--fg-soft);
+  }
+
+  .launch__count {
+    margin-top: 0.75rem;
+    font-size: clamp(2.8rem, 6vw, 4.5rem);
+    font-weight: 860;
+    font-stretch: 125%;
+    letter-spacing: -0.03em;
+    line-height: 0.9;
+    color: var(--tungsten-deep);
+  }
+
+  .launch__count:not([hidden]) + .launch__count--fallback {
+    display: none;
+  }
+
+  .launch__tickets {
+    display: grid;
+    gap: 0.75rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .ticket {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto auto auto;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.65rem 0.75rem 0.65rem 0.65rem;
+    border: 1px dashed var(--rule-strong);
+    border-radius: var(--radius-md);
+    background: var(--paper);
+  }
+
+  .ticket__off {
+    display: grid;
+    place-items: center;
+    min-width: 4.4rem;
+    min-height: 3rem;
+    border-radius: 0.6rem;
+    background: var(--ink);
+    color: var(--paper);
+    font-weight: 820;
+    font-stretch: 125%;
+  }
+
+  .ticket__what {
+    display: grid;
+    font-size: 0.9rem;
+    line-height: 1.3;
+    color: var(--fg-soft);
+  }
+
+  .ticket__what strong {
+    color: var(--fg);
+  }
+
+  .ticket__price {
+    display: grid;
+    justify-items: end;
+    line-height: 1.15;
+  }
+
+  .ticket__price s {
+    color: var(--fg-faint);
+    font-size: 0.85rem;
+  }
+
+  .ticket__price strong {
+    font-size: 1.25rem;
+    font-weight: 800;
+  }
+
+  .ticket__code,
+  .offer__code {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-height: 2.75rem;
+    padding: 0 0.9rem;
+    border: 1px solid var(--ink);
+    border-radius: 999px;
+    background: transparent;
+    font-weight: 760;
+    letter-spacing: 0.04em;
+    transition:
+      background-color var(--dur-fast) ease,
+      color var(--dur-fast) ease;
+  }
+
+  .ticket__code:hover,
+  .offer__code:hover,
+  .ticket__code[data-copied],
+  .offer__code[data-copied] {
+    background: var(--ink);
+    color: var(--paper);
+  }
+
+  .ticket__code :global(svg),
+  .offer__code :global(svg) {
+    width: 0.95rem;
+    height: 0.95rem;
+  }
+
+  .ticket__done {
+    font-size: 0.75rem;
+    font-weight: 560;
+  }
+
+  .ticket__go {
+    min-height: 2.75rem;
+    display: inline-flex;
+    align-items: center;
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-decoration: underline;
+    text-decoration-color: var(--rule-strong);
+    text-underline-offset: 0.3em;
+  }
+
+  .launch__after {
+    grid-column: 1 / -1;
+    color: var(--fg-soft);
+    font-size: 0.85rem;
+  }
+
+  /* ── La feuille ── */
+  .sheet {
+    display: grid;
+    margin-top: clamp(2.5rem, 5vw, 4rem);
+    border-top: 2px solid var(--ink);
+  }
+
+  .sheet__row {
+    display: grid;
+    grid-template-columns: minmax(0, 4fr) minmax(0, 4fr) minmax(0, 4fr);
+    border-bottom: 1px solid var(--rule-strong);
+  }
+
+  .sheet__row > * {
+    padding: clamp(1.25rem, 2.4vw, 2rem) clamp(1rem, 2vw, 1.75rem);
+  }
+
+  .sheet__row > * + * {
+    border-left: 1px solid var(--rule);
+  }
+
+  .sheet__format {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 1rem;
+    align-items: start;
+  }
+
+  .frame {
+    position: relative;
+    display: grid;
+    place-items: center;
+    border: 1.5px solid var(--ink);
+    border-radius: 0.35rem;
+  }
+
+  .frame--short {
+    width: 2.6rem;
+    aspect-ratio: 9 / 16;
+  }
+
+  .frame--long {
+    width: 4.6rem;
+    aspect-ratio: 16 / 9;
+  }
+
+  .frame .label {
+    color: var(--fg);
+    font-size: 0.55rem;
+    letter-spacing: 0.06em;
+  }
+
+  .sheet__format-name {
+    font-size: clamp(1.35rem, 1.9vw, 1.7rem);
+    font-weight: 760;
+    font-stretch: 112%;
+    letter-spacing: -0.025em;
+    line-height: 1.05;
+  }
+
+  .sheet__format .label {
+    margin-top: 0.35rem;
+  }
+
+  .sheet__format-desc {
+    margin-top: 0.7rem;
+    color: var(--fg-soft);
+    font-size: 0.92rem;
+  }
+
+  .sheet__mode {
+    display: grid;
+    align-content: start;
+    gap: 0.65rem;
+    color: var(--fg-soft);
+    font-size: 0.95rem;
+  }
+
+  .sheet__mode-title {
+    color: var(--fg);
+    font-size: clamp(1.3rem, 1.8vw, 1.6rem);
+    font-weight: 760;
+    font-stretch: 112%;
+    letter-spacing: -0.025em;
+    line-height: 1.1;
+  }
+
+  /* « Pas d'abonnement » : un simple filet tout autour, pas de barre de couleur sur le côté */
+  .sheet__note {
+    padding: 0.6rem 0.75rem;
+    border: 1px solid var(--rule-strong);
+    border-radius: var(--radius-sm);
+    color: var(--fg);
+    font-weight: 600;
+  }
+
+  .sheet__fit {
+    display: flex;
+    gap: 0.5rem;
+    font-size: 0.88rem;
+  }
+
+  .sheet__fit :global(svg) {
+    flex: none;
+    width: 1rem;
+    height: 1rem;
+    margin-top: 0.2rem;
+  }
+
+  /* ── Une offre ── */
+  .offer {
+    position: relative;
+    display: grid;
+    align-content: start;
+    gap: 0.35rem;
+    transition: background-color var(--dur-normal) ease;
+  }
+
+  .offer:focus {
+    outline: none;
+    background: var(--paper-2);
+  }
+
+  .offer__format {
+    display: none;
+  }
+
+  .offer__was {
+    color: var(--fg-faint);
+    font-size: 1.05rem;
+  }
+
+  .offer__price {
+    font-size: clamp(3rem, 5.4vw, 4.6rem);
+    font-weight: 860;
+    font-stretch: 125%;
+    letter-spacing: -0.04em;
+    line-height: 0.9;
+  }
+
+  .offer__cur {
+    margin-left: 0.08em;
+    font-size: 0.45em;
+    vertical-align: 0.8em;
+  }
+
+  .offer__unit {
+    color: var(--fg-soft);
+    font-size: 0.85rem;
+  }
+
+  /* Le tampon de la promo : il « frappe » le papier quand il arrive à l'écran (rates.ts) */
+  .stamp {
+    position: absolute;
+    top: clamp(1rem, 2vw, 1.6rem);
+    right: clamp(0.75rem, 2vw, 1.5rem);
+    padding: 0.35rem 0.65rem;
+    border: 2px solid var(--tungsten-deep);
+    border-radius: 0.45rem;
+    color: var(--tungsten-deep);
+    font-size: 1.05rem;
+    font-weight: 860;
+    font-stretch: 125%;
+    letter-spacing: 0.02em;
+    rotate: -8deg;
+  }
+
+  :global(.js) .stamp[data-stamp]:not(:global(.is-in)) {
+    opacity: 0;
+  }
+
+  .stamp:global(.is-in) {
+    animation: stamp 0.42s cubic-bezier(0.3, 1.4, 0.5, 1) both;
+  }
+
+  @keyframes stamp {
+    from {
+      opacity: 0;
+      transform: scale(1.7);
+    }
+    60% {
+      opacity: 1;
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  .offer__promo {
+    display: grid;
+    gap: 0.4rem;
+    justify-items: start;
+    margin-top: 0.8rem;
+    font-size: 0.85rem;
+    color: var(--fg-soft);
+  }
+
+  .offer__copy {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.75rem;
+    font-weight: 560;
+    letter-spacing: 0;
+  }
+
+  .offer__until strong {
+    color: var(--tungsten-deep);
+  }
+
+  .offer__foot {
+    display: grid;
+    gap: 0.6rem;
+    justify-items: start;
+    margin-top: 1.2rem;
+  }
+
+  .offer__host {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    color: var(--fg-faint);
+    font-size: 0.78rem;
+  }
+
+  .offer__host :global(svg) {
+    width: 0.9rem;
+    height: 0.9rem;
+  }
+
+  .offer__warn {
+    color: var(--tungsten-deep);
+    font-weight: 700;
+  }
+
+  /* ── Après la feuille ── */
+  .rates__after {
+    display: grid;
+    grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+    gap: clamp(2rem, 5vw, 5rem);
+    margin-top: clamp(3rem, 6vw, 5rem);
+  }
+
+  .rates__side-title {
+    font-size: 1.25rem;
+    font-weight: 720;
+    font-stretch: 112%;
+    letter-spacing: -0.02em;
+  }
+
+  .rates__start {
+    display: grid;
+    gap: 1rem;
+    justify-items: start;
+    align-content: start;
+    color: var(--fg-soft);
+  }
+
+  .rates__start .rates__side-title {
+    color: var(--fg);
+  }
+
+  .qa {
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .qa:first-of-type {
+    margin-top: 0.75rem;
+    border-top: 1px solid var(--rule);
+  }
+
+  .qa summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    min-height: 3.25rem;
+    padding: 0.6rem 0;
+    font-weight: 600;
+    cursor: pointer;
+    list-style: none;
+  }
+
+  .qa summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .qa summary :global(svg) {
+    flex: none;
+    width: 1rem;
+    height: 1rem;
+    transition: rotate var(--dur-normal) var(--ease-out);
+  }
+
+  .qa[open] summary :global(svg) {
+    rotate: 45deg;
+  }
+
+  .qa p,
+  .qa__codes {
+    padding-bottom: 1rem;
+    color: var(--fg-soft);
+  }
+
+  .qa__codes {
+    display: grid;
+    gap: 0.4rem;
+    margin: 0;
+    padding-left: 1.1rem;
+  }
+
+  .rates__trust {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem 1.75rem;
+    margin: clamp(2.5rem, 5vw, 3.5rem) 0 0;
+    padding: 1.25rem 0 0;
+    border-top: 1px solid var(--rule);
+    list-style: none;
+    font-size: 0.88rem;
+    font-weight: 560;
+  }
+
+  .rates__trust li {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+  }
+
+  .rates__trust :global(svg) {
+    width: 1rem;
+    height: 1rem;
+  }
+
+  .rates__safety {
+    display: flex;
+    gap: 0.9rem;
+    margin-top: 1.5rem;
+    padding: 1.1rem 1.25rem;
+    border: 1px solid var(--ink);
+    border-radius: var(--radius-md);
+    font-weight: 560;
+  }
+
+  .rates__safety :global(svg) {
+    flex: none;
+    width: 1.3rem;
+    height: 1.3rem;
+  }
+
+  @media (max-width: 64rem) {
+    .launch,
+    .rates__after {
+      grid-template-columns: 1fr;
+    }
+
+    .ticket {
+      grid-template-columns: auto minmax(0, 1fr) auto;
+    }
+
+    .ticket__code,
+    .ticket__go {
+      grid-row: 2;
+    }
+
+    .ticket__code {
+      grid-column: 1 / 3;
+      justify-self: start;
+    }
+  }
+
+  /* Téléphone : chaque façon de régler devient un bloc, ses deux offres l'une sous l'autre */
+  @media (max-width: 48rem) {
+    .sheet__row--head {
+      display: none;
+    }
+
+    .sheet__row {
+      grid-template-columns: 1fr;
+      padding-bottom: 1rem;
+    }
+
+    .sheet__row > * + * {
+      border-left: 0;
+      border-top: 1px solid var(--rule);
+    }
+
+    .sheet__row > * {
+      padding-inline: 0;
+    }
+
+    .offer__format {
+      display: block;
+    }
+  }
+</style>

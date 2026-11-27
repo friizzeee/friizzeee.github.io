@@ -64,7 +64,7 @@ export interface ProcessStep {
 export interface VideoInput {
   /** Fichier vidéo dans public/ (ex. '/videos/ma-video.mp4'). Passe avant `url`. */
   file?: string;
-  /** Version allégée (480p) : choisie d'office sur téléphone et connexion lente. */
+  /** Version allégée (480p ou 720p) : choisie d'office sur téléphone et connexion lente. */
   fileLight?: string;
   /** Courte boucle muette jouée au survol (chargée seulement à ce moment-là). */
   preview?: string;

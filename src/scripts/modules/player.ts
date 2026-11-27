@@ -2,7 +2,7 @@
  * Lecteur plein écran du portfolio (structure : components/portfolio/PlayerDialog.astro).
  *
  * Fichier vidéo
- *  - commandes du site : lecture, barre découpée par chapitres, son, 720p / 480p, plein écran ;
+ *  - commandes du site : lecture, barre découpée par chapitres, son, HD / version légère, plein écran ;
  *  - clavier : Espace ou K (lecture), ← → (5 s), ↑ ↓ (volume), M (son), F (plein écran), Début ;
  *  - états : chargement, erreur avec relance, fin de lecture ;
  *  - série : les vidéos qui partagent `data-group` s'enchaînent depuis le bandeau des parties.
@@ -332,14 +332,17 @@ export function setupPlayer(cleanups: Cleanup[]): void {
     }
   };
 
-  /* ── Qualité : 720p par défaut, 480p sur téléphone ou connexion lente ── */
+  /* ── Qualité : la version HD par défaut, la légère sur téléphone ou connexion lente ── */
   const syncQuality = (item: Item): void => {
     if (lighterBtn) lighterBtn.hidden = !item.light || !hd;
     if (!qualityBtn) return;
     qualityBtn.hidden = !item.light;
     qualityBtn.dataset.hd = String(hd);
-    if (qualityLabel) qualityLabel.textContent = hd ? '720p' : '480p';
-    qualityBtn.setAttribute('aria-label', hd ? 'Qualité : 720p. Passer en 480p' : 'Qualité : 480p. Passer en 720p');
+    // La hauteur réelle de l'image (1080p, 720p, 480p) dès que le fichier la donne ; sinon HD ou légère.
+    const v = video;
+    const size = v && v.videoWidth ? `${Math.min(v.videoWidth, v.videoHeight)}p` : hd ? 'HD' : 'Légère';
+    if (qualityLabel) qualityLabel.textContent = size;
+    qualityBtn.setAttribute('aria-label', `Qualité : ${size}. Passer à la version ${hd ? 'légère' : 'HD'}`);
   };
 
   /** Recharge la source en cours (autre qualité, ou nouvelle tentative) en gardant la position. */
@@ -364,7 +367,7 @@ export function setupPlayer(cleanups: Cleanup[]): void {
     hd = value;
     session.hd = value;
     syncQuality(item);
-    announce = value ? 'Qualité 720p' : 'Qualité 480p';
+    announce = value ? 'Version HD' : 'Version légère';
     reload(item, resume);
   };
 
@@ -496,6 +499,8 @@ export function setupPlayer(cleanups: Cleanup[]): void {
     // La durée saisie dans les données fait foi (même valeur que sur la carte) ; sinon, celle du fichier.
     if (totalEl) totalEl.textContent = current()?.length || clock(d);
     drawMarks(d);
+    const item = current();
+    if (item) syncQuality(item);
     if (pendingStart !== null) {
       v.currentTime = clamp(pendingStart, 0, Math.max(0, d - 1));
       pendingStart = null;

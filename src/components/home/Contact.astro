@@ -1,0 +1,209 @@
+---
+/**
+ * Accueil : « Coupez. » Le tournage, c'est le client ; après « coupez », c'est le montage.
+ * Discord d'abord (lien et pseudo : src/config/site.ts), l'e-mail ensuite, un modèle de premier message
+ * à copier (src/data/process.ts), et la carte du vrai profil Discord (src/data/coulisses.ts).
+ */
+import { site, discordHref, isDiscordConfigured } from '../../config/site';
+import { briefTemplate } from '../../data/process';
+import DiscordProfileCard from '../ui/DiscordProfileCard.astro';
+import Icon from '../ui/Icon.astro';
+
+const external = isDiscordConfigured ? { target: '_blank', rel: 'noopener noreferrer' } : {};
+---
+
+<section id="contact" class="cut" data-spy="contact" aria-labelledby="cut-title">
+  <div class="wrap cut__grid">
+    <div class="cut__main">
+      <p class="label">Contact</p>
+      <h2 class="cut__title" id="cut-title">
+        <span class="display" data-reveal>Coupez.</span>
+        <span class="cut__line" data-reveal data-reveal-delay="0.1">
+          Le tournage, c’est vous. Après « coupez », <span class="script">c’est moi.</span>
+        </span>
+      </h2>
+      <p class="lede cut__lead">
+        Expliquez-moi votre projet sur Discord : on en parle, je vous confirme le délai et le tarif, puis on démarre.
+        Vous payez une fois la vidéo livrée.
+      </p>
+
+      <div class="cut__actions">
+        <a class="pill pill--solid pill--lg" href={discordHref} {...external} data-discord-link>
+          <Icon name="discord" />
+          Écrire sur Discord
+          <span class="sr-only">(nouvel onglet)</span>
+        </a>
+        {
+          site.discord.handle && (
+            <button type="button" class="pill pill--lg" data-copy={site.discord.handle} aria-label={`Pseudo : ${site.discord.handle}, copier le pseudo Discord`}>
+              <Icon name="copy" />
+              <span data-copy-label>Pseudo : {site.discord.handle}</span>
+            </button>
+          )
+        }
+      </div>
+      <ul class="cut__facts" aria-label="Comment ça se passe">
+        <li><Icon name="check" />Message privé</li>
+        <li><Icon name="check" />Délai et tarif confirmés avant de démarrer</li>
+        <li><Icon name="check" />Paiement après livraison</li>
+      </ul>
+      <p class="cut__mail">
+        Ou par e-mail : <a href={`mailto:${site.email}`}>{site.email}</a> · <a href="/contact">Comment se passe une commande</a>
+      </p>
+    </div>
+
+    <div class="cut__side">
+      <DiscordProfileCard />
+      <div class="cut__brief">
+        <div class="cut__brief-head">
+          <p class="label">Modèle de premier message</p>
+          <button type="button" class="pill" data-copy data-copy-from="#brief-accueil">
+            <Icon name="copy" />
+            <span data-copy-label>Copier</span>
+          </button>
+        </div>
+        <pre id="brief-accueil">{briefTemplate}</pre>
+      </div>
+    </div>
+  </div>
+</section>
+
+<style>
+  .cut {
+    padding-block: clamp(5rem, 11vw, 9rem);
+    background:
+      radial-gradient(ellipse 55% 45% at 78% 40%, rgb(255 138 61 / 0.1), transparent 70%),
+      var(--night);
+  }
+
+  .cut__grid {
+    display: grid;
+    grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+    gap: clamp(3rem, 6vw, 6rem);
+    align-items: center;
+  }
+
+  .cut__main {
+    display: grid;
+    gap: 1.5rem;
+    justify-items: start;
+  }
+
+  .cut__title {
+    display: grid;
+    gap: 1rem;
+  }
+
+  .cut__title .display {
+    font-size: clamp(4.2rem, 13vw, 11.5rem);
+    color: var(--cream);
+  }
+
+  .cut__line {
+    max-width: 30ch;
+    font-size: clamp(1.5rem, 2.6vw, 2.3rem);
+    font-weight: 700;
+    font-stretch: 112%;
+    letter-spacing: -0.03em;
+    line-height: 1.12;
+  }
+
+  .cut__line .script {
+    font-size: 1.55em;
+    font-weight: 400;
+    line-height: 0.8;
+    color: var(--tungsten);
+  }
+
+  .cut__lead {
+    max-width: 38rem;
+    color: var(--fog);
+  }
+
+  .cut__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+  }
+
+  .cut__actions :global(svg) {
+    width: 1.05rem;
+    height: 1.05rem;
+  }
+
+  .cut__facts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 1.5rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    color: var(--fog);
+    font-size: 0.9rem;
+  }
+
+  .cut__facts li {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+
+  .cut__facts :global(svg) {
+    width: 0.95rem;
+    height: 0.95rem;
+    color: var(--tungsten);
+  }
+
+  .cut__mail {
+    color: var(--fog);
+    font-size: 0.92rem;
+  }
+
+  .cut__mail a {
+    color: var(--cream);
+    text-decoration: underline;
+    text-decoration-color: var(--hair-strong);
+    text-underline-offset: 0.3em;
+  }
+
+  .cut__side {
+    display: grid;
+    gap: 1.5rem;
+    justify-items: center;
+  }
+
+  .cut__brief {
+    width: 100%;
+    max-width: 24rem;
+    padding: 1.1rem 1.2rem;
+    border: 1px solid var(--hair);
+    border-radius: var(--radius-md);
+    background: var(--night-2);
+  }
+
+  .cut__brief-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+  }
+
+  .cut__brief-head .pill {
+    min-height: 2.25rem;
+  }
+
+  .cut__brief pre {
+    margin-top: 0.8rem;
+    color: var(--fog);
+    font-family: var(--font);
+    font-size: 0.85rem;
+    line-height: 1.6;
+    white-space: pre-wrap;
+  }
+
+  @media (max-width: 56rem) {
+    .cut__grid {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

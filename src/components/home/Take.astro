@@ -1,0 +1,817 @@
+---
+/**
+ * Accueil : le plan-séquence, une balade dans le studio.
+ *
+ * Sans JavaScript (ou avec « animations réduites ») : l'entrée du couloir en plein écran, puis un arrêt
+ * par réalisation, les uns sous les autres (l'image à gauche, la fiche à droite).
+ * Avec JavaScript (src/scripts/modules/take.ts), un seul plan piloté par le défilement : la caméra entre dans
+ * le couloir, s'arrête devant chaque alcôve (l'écran à gauche, la fiche à droite, comme le cartel d'une œuvre),
+ * puis finit au bureau de montage. Les images sont rendues dans Blender (tools/plan-sequence/render_walk.py) ;
+ * les vraies boucles vidéo sont calées en perspective sur les écrans du décor, à leur taille réelle dans l'image.
+ * Textes et boucles : src/data/take.ts. Fiche technique : `profile` dans src/data/about.ts.
+ */
+import { Image, getImage } from 'astro:assets';
+import { site } from '../../config/site';
+import { about } from '../../data/about';
+import { stops, hint } from '../../data/take';
+import { behind, liveProjects, pad, type Project } from '../../lib/portfolio';
+import PlayTrigger from '../portfolio/PlayTrigger.astro';
+import Icon from '../ui/Icon.astro';
+
+const projectOf = (slug: string): Project | undefined =>
+  liveProjects.find((p) => p.slug === slug) ?? (behind.slug === slug && behind.ready ? behind : undefined);
+
+/** Taille de la boîte posée sur chaque écran du décor (la perspective la ramène à la taille de l'écran). */
+const BOX = { '16:9': [1600, 900], '9:16': [720, 1280] } as const;
+
+const plans = await Promise.all(
+  stops.map(async (stop) => ({
+    ...stop,
+    project: projectOf(stop.project),
+    screens: await Promise.all(
+      stop.screens.map(async (s) => ({
+        ...s,
+        posterSrc: (await getImage({ src: s.poster, width: BOX[s.ratio][0], format: 'webp', quality: 82 })).src,
+      })),
+    ),
+  })),
+);
+
+/** Libellé du bouton de lecture : « Voir le final · 0:41 », « Lire la partie 1 · 6:27 »… */
+const playText = (p: Project, i: number): string => {
+  const v = p.playable[i];
+  if (!v) return '';
+  if (p.playable.length > 1 && p.format === '9:16') return `Extrait ${i + 1} · ${v.duration ?? ''}`;
+  if (p.playable.length > 1) return `Lire la partie ${i + 1} · ${v.duration ?? ''}`;
+  return v.excerpt ? `${v.playLabel}` : `${v.playLabel} · ${v.duration ?? ''}`;
+};
+
+const railLabels = ['L’entrée', ...stops.map((s) => s.title)];
+---
+
+<section id="top" class="take" data-take data-plan="/plan" aria-labelledby="take-title" data-spy="top">
+  <div class="take__stage" data-take-stage>
+    <!-- Plan 01 : l'entrée du couloir -->
+    <div class="take__room">
+      <picture>
+        <source media="(max-aspect-ratio: 9/10)" srcset="/plan/9x16/poster.webp" width="1080" height="1920" />
+        <img
+          class="take__poster"
+          src="/plan/16x9/poster.webp"
+          width="1920"
+          height="1080"
+          alt="Un long couloir sombre au parquet de bois : à gauche, des alcôves éclairées où passent des montages, à droite un mur de tasseaux de noyer, au fond un bureau de montage éclairé en orange."
+          fetchpriority="high"
+          decoding="async"
+          data-take-poster
+        />
+      </picture>
+      <canvas class="take__canvas" aria-hidden="true" data-take-canvas></canvas>
+      <!-- Les vraies boucles, posées sur les écrans du décor -->
+      <div class="take__screens" aria-hidden="true">
+        {
+          plans.flatMap((stop) =>
+            stop.screens.map((s) => (
+              <div
+                class="take__screen"
+                data-take-screen={s.id}
+                data-stop-of={stop.id}
+                data-w={BOX[s.ratio][0]}
+                data-h={BOX[s.ratio][1]}
+                style={`width:${BOX[s.ratio][0]}px;height:${BOX[s.ratio][1]}px`}>
+                <video muted loop playsinline preload="none" poster={s.posterSrc} data-src={s.src} />
+              </div>
+            )),
+          )
+        }
+      </div>
+    </div>
+    <span class="take__scrim" aria-hidden="true"></span>
+
+    <!-- Titre et fiche technique -->
+    <header class="take__hero">
+      <h1 id="take-title" class="take__title">
+        <span class="take__word display" data-take-part="word">{site.name}</span>
+        <span class="take__script script" data-take-part="script">monteur vidéo</span>
+      </h1>
+    </header>
+
+    <dl class="take__spec glass" data-take-part="spec">
+      {
+        about.profile.map((row) => (
+          <div>
+            <dt>{row.label} :</dt>
+            <dd>{row.value}</dd>
+          </div>
+        ))
+      }
+    </dl>
+
+    <p class="take__hint label" data-take-part="hint">
+      {hint}
+      <Icon name="arrow-down" />
+    </p>
+
+    <!-- Les arrêts : l'œuvre à gauche, sa fiche à droite -->
+    <ol class="take__stops" aria-label="Réalisations">
+      {
+        plans.map((stop, n) => {
+          const p = stop.project;
+          const next = plans[n + 1];
+          return (
+            <li class="stop" id={`plan-${stop.id}`} data-stop={stop.id} data-mark={stop.mark}>
+              <div class:list={['stop__media', stop.screens.length > 1 && 'stop__media--row']}>
+                {stop.screens.map((s) => (
+                  <Image
+                    src={s.poster}
+                    alt=""
+                    widths={s.ratio === '9:16' ? [240, 360, 540] : [640, 960, 1280]}
+                    sizes={s.ratio === '9:16' ? '(min-width: 48rem) 14rem, 30vw' : '(min-width: 48rem) 50vw, 100vw'}
+                    loading="lazy"
+                  />
+                ))}
+              </div>
+              <article class="stop__card glass" aria-labelledby={`plan-${stop.id}-title`}>
+                <p class="label stop__kicker">{stop.kicker}</p>
+                <h2 class="stop__title" id={`plan-${stop.id}-title`}>
+                  {stop.title} <sup class="num">{stop.sup}</sup>
+                </h2>
+                <p class="stop__lede">{stop.lede}</p>
+                <p class="stop__body">{stop.body}</p>
+                <div class="stop__actions">
+                  {p?.playable.map((v, i) => (
+                    <PlayTrigger project={p} video={v} class:list={['pill', i === 0 ? 'pill--solid' : 'pill--glass']}>
+                      <Icon name="play" />
+                      {playText(p, i)}
+                    </PlayTrigger>
+                  ))}
+                  {next ? (
+                    <a class="pill pill--glass" href={`#plan-${next.id}`} data-take-goto={next.id}>
+                      Plan suivant
+                      <Icon name="arrow-down" />
+                    </a>
+                  ) : (
+                    <a class="pill pill--glass" href="/portfolio">
+                      Toutes les réalisations
+                      <Icon name="arrow" />
+                    </a>
+                  )}
+                </div>
+                {p && (
+                  <a class="stop__more" href={p.href}>
+                    La fiche du projet <Icon name="arrow" />
+                  </a>
+                )}
+              </article>
+            </li>
+          );
+        })
+      }
+    </ol>
+
+    <!-- La timeline du plan : un repère par arrêt, la tête de lecture avance avec le défilement -->
+    <nav class="take__rail" aria-label="Plans de la séquence" data-take-rail>
+      <span class="take__track" aria-hidden="true"><i data-take-progress></i></span>
+      <ol>
+        {
+          railLabels.map((label, i) => (
+            <li>
+              <a href={i === 0 ? '#top' : `#plan-${stops[i - 1].id}`} data-take-goto={i === 0 ? 'top' : stops[i - 1].id}>
+                <span class="num">{pad(i + 1)}</span>
+                <span class="take__rail-label">{label}</span>
+              </a>
+            </li>
+          ))
+        }
+      </ol>
+    </nav>
+    <button type="button" class="take__pause pill pill--glass" aria-pressed="false" hidden data-take-pause>
+      <Icon name="pause" />
+      <span class="take__pause-label" data-pause-label>Arrêter les vidéos</span>
+    </button>
+  </div>
+</section>
+
+<style>
+  .take {
+    position: relative;
+    background: var(--night);
+  }
+
+  .take__stage {
+    position: relative;
+  }
+
+  /* ── Plan 01 : l'entrée (version sans animation : un écran plein) ── */
+  .take__room {
+    position: relative;
+    height: 100svh;
+    min-height: 34rem;
+    overflow: hidden;
+  }
+
+  .take__poster {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .take__canvas,
+  .take__screens,
+  .take__rail {
+    display: none;
+  }
+
+  /* Bandeaux sombres haut et bas : l'en-tête et le titre restent lisibles */
+  .take__scrim {
+    position: absolute;
+    inset: 0;
+    height: 100svh;
+    background:
+      linear-gradient(180deg, rgb(11 9 7 / 0.55), transparent 24%),
+      linear-gradient(0deg, rgb(11 9 7 / 0.45), transparent 26%);
+    pointer-events: none;
+  }
+
+  /* ── Titre : la masse du logotype, l'écriture à la main ── */
+  .take__hero {
+    position: absolute;
+    inset: 0 0 auto;
+    height: 100svh;
+    pointer-events: none;
+    --top: max(calc(var(--header-h) + 0.5rem), 11svh);
+    --size: min(15.6vw, 30svh);
+  }
+
+  .take__title {
+    margin: 0;
+    font-weight: inherit;
+  }
+
+  .take__word {
+    position: absolute;
+    left: 4.2vw;
+    top: var(--top);
+    font-size: var(--size);
+    color: var(--cream);
+    white-space: nowrap;
+  }
+
+  .take__script {
+    position: absolute;
+    left: 55vw;
+    top: calc(var(--top) + var(--size) * 0.86);
+    font-size: min(7vw, 13.5svh);
+    line-height: 1;
+    color: #fff;
+    rotate: -6deg;
+    transform-origin: left center;
+    text-shadow: 0 0.04em 0.4em rgb(0 0 0 / 0.35);
+    white-space: nowrap;
+  }
+
+
+  /* ── Fiche technique (« Location / Sleeps / Area / Stay » de la référence) ── */
+  .take__spec {
+    position: absolute;
+    left: var(--gutter);
+    top: calc(100svh - var(--gutter));
+    translate: 0 -100%;
+    display: grid;
+    gap: 0.3rem;
+    width: min(23rem, 100% - 2 * var(--gutter));
+    margin: 0;
+    padding: 0.9rem 1.1rem;
+    font-size: 0.82rem;
+    line-height: 1.35;
+  }
+
+  .take__spec > div {
+    display: flex;
+    gap: 0.4rem;
+  }
+
+  .take__spec dt {
+    flex: none;
+    color: var(--fog);
+  }
+
+  .take__spec dd {
+    margin: 0;
+    font-weight: 600;
+  }
+
+  .take__hint {
+    position: absolute;
+    right: var(--gutter);
+    top: calc(100svh - var(--gutter) - 1rem);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--cream);
+    margin: 0;
+  }
+
+  .take__hint :global(svg) {
+    width: 0.9rem;
+    height: 0.9rem;
+  }
+
+  /* ── Arrêts : version sans animation, les uns sous les autres ── */
+  .take__stops {
+    list-style: none;
+    margin: 0;
+    padding: 0 0 clamp(3rem, 8vw, 6rem);
+  }
+
+  .stop {
+    position: relative;
+    display: grid;
+    gap: 1.5rem;
+    align-items: center;
+    width: min(100% - 2 * var(--gutter), 90rem);
+    margin-inline: auto;
+    padding-top: clamp(3rem, 7vw, 6rem);
+  }
+
+  @media (min-width: 56rem) {
+    .stop {
+      grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+      gap: clamp(2rem, 4vw, 4rem);
+    }
+  }
+
+  .stop__media {
+    position: relative;
+    aspect-ratio: 16 / 9;
+    overflow: hidden;
+    border-radius: var(--radius-md);
+    background: var(--night-2);
+  }
+
+  .stop__media :global(img) {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .stop__media--row {
+    display: flex;
+    justify-content: center;
+    gap: 0.75rem;
+    aspect-ratio: auto;
+    background: none;
+  }
+
+  .stop__media--row :global(img) {
+    width: min(14rem, 31%);
+    height: auto;
+    aspect-ratio: 9 / 16;
+    border-radius: var(--radius-sm);
+  }
+
+  .stop__card {
+    position: relative;
+    z-index: 1;
+    padding: 1.35rem 1.4rem 1.25rem;
+  }
+
+  .stop__kicker {
+    color: var(--fog);
+  }
+
+  .stop__title {
+    margin: 0.55rem 0 0;
+    font-size: clamp(1.7rem, 2.3vw, 2.15rem);
+    font-weight: 720;
+    font-stretch: 112%;
+    letter-spacing: -0.03em;
+    line-height: 1.02;
+  }
+
+  .stop__title sup {
+    margin-left: 0.15em;
+    font-size: 0.42em;
+    font-weight: 560;
+    font-stretch: 100%;
+    letter-spacing: 0;
+    color: var(--fog);
+    vertical-align: 0.95em;
+  }
+
+  .stop__lede {
+    margin-top: 0.6rem;
+    font-size: 1.05rem;
+    font-weight: 560;
+    line-height: 1.35;
+  }
+
+  .stop__body {
+    margin-top: 0.55rem;
+    color: var(--fog);
+    font-size: 0.92rem;
+    line-height: 1.5;
+  }
+
+  .stop__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 1.1rem;
+  }
+
+  .stop__more {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    min-height: 2.75rem;
+    margin-top: 0.35rem;
+    color: var(--fog);
+    font-size: 0.85rem;
+    text-decoration: underline;
+    text-decoration-color: var(--hair-strong);
+    text-underline-offset: 0.3em;
+    transition: color var(--dur-fast) ease;
+  }
+
+  .stop__more:hover {
+    color: var(--cream);
+  }
+
+  .stop__more :global(svg) {
+    width: 0.85rem;
+    height: 0.85rem;
+  }
+
+  /* ═══════════ Le plan-séquence (take.ts pose .is-live) ═══════════ */
+  .take:global(.is-live) {
+    height: calc((var(--take-len, 10) + 1) * 100svh);
+  }
+
+  .take:global(.is-live) .take__stage {
+    position: sticky;
+    top: 0;
+    height: 100svh;
+    overflow: hidden;
+  }
+
+  .take:global(.is-live) .take__room {
+    position: absolute;
+    inset: 0;
+    height: auto;
+    min-height: 0;
+  }
+
+  .take:global(.is-live) .take__canvas {
+    display: block;
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+  }
+
+  .take:global(.is-ready) .take__canvas {
+    opacity: 1;
+  }
+
+  /* Une fois le décor prêt, le canevas prend le relais de l'image d'accueil */
+  .take:global(.is-ready) .take__poster {
+    visibility: hidden;
+  }
+
+  .take:global(.is-live) .take__screens {
+    display: block;
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+  }
+
+  .take__screen {
+    position: absolute;
+    left: 0;
+    top: 0;
+    overflow: hidden;
+    background: #0d0d10;
+    transform-origin: 0 0;
+    opacity: 0;
+    visibility: hidden;
+    will-change: transform, opacity;
+    transition:
+      opacity var(--dur-normal) ease,
+      visibility 0s linear var(--dur-normal);
+  }
+
+  .take__screen:global(.is-on) {
+    opacity: 1;
+    visibility: visible;
+    transition: opacity var(--dur-normal) ease;
+  }
+
+  .take__screen video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  /* Le verre de la dalle : un reflet discret, comme sur les écrans du décor */
+  .take__screen::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(118deg, rgb(255 255 255 / 0.07), transparent 36%, transparent 72%, rgb(255 255 255 / 0.03));
+    pointer-events: none;
+  }
+
+  .take:global(.is-live) .take__stops {
+    position: absolute;
+    inset: 0;
+    padding: 0;
+    pointer-events: none;
+  }
+
+  .take:global(.is-live) .stop {
+    position: absolute;
+    inset: 0;
+    display: block;
+    width: auto;
+    margin: 0;
+    padding: 0;
+  }
+
+  .take:global(.is-live) .stop__media {
+    display: none;
+  }
+
+  /* La fiche se pose sur le mur libre, à droite de l'œuvre */
+  .take:global(.is-live) .stop__card {
+    position: absolute;
+    right: var(--gutter);
+    top: 50%;
+    width: min(28.5rem, 34vw);
+    max-height: calc(100svh - 2 * var(--header-h));
+    overflow-y: auto;
+    translate: 0 -50%;
+    opacity: 0;
+    transform: translateX(18px);
+    pointer-events: none;
+    transition:
+      opacity var(--dur-normal) var(--ease-out),
+      transform var(--dur-slow) var(--ease-expo);
+  }
+
+  /* Sur le décor animé, le verre dépoli devient une plaque sombre, comme un cartel : un flou d'arrière-plan serait
+     recalculé à chaque image de la marche (c'était une des causes des saccades). */
+  .take:global(.is-live) :global(.glass) {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    background: linear-gradient(180deg, rgb(20 16 12 / 0.88), rgb(13 10 8 / 0.9));
+    box-shadow: 0 1.5rem 3rem -1.5rem rgb(0 0 0 / 0.6);
+  }
+
+  /* « Golden Boy, le Best Of 14:43 » tient sur une ligne */
+  .take:global(.is-live) .stop__title {
+    font-size: clamp(1.4rem, 2.1vw, 2rem);
+  }
+
+  .take:global(.is-live) .stop:global(.is-active) .stop__card {
+    opacity: 1;
+    transform: none;
+    pointer-events: auto;
+  }
+
+  /* La timeline : la tête de lecture et un repère par plan */
+  .take:global(.is-live) .take__rail {
+    display: block;
+    position: absolute;
+    left: var(--gutter);
+    right: var(--gutter);
+    bottom: 1.1rem;
+    height: 1.75rem;
+  }
+
+  .take__track {
+    position: absolute;
+    inset: auto 0 0;
+    height: 2px;
+    background: rgb(239 228 200 / 0.14);
+  }
+
+  .take__track i {
+    position: absolute;
+    inset: 0;
+    background: var(--tungsten);
+    transform: scaleX(var(--p, 0));
+    transform-origin: left;
+  }
+
+  .take__rail ol {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .take__rail li {
+    position: absolute;
+    bottom: 0;
+    left: calc(var(--at, 0) * 100%);
+  }
+
+  .take__rail a {
+    position: relative;
+    display: flex;
+    align-items: flex-end;
+    gap: 0.5rem;
+    min-width: 2.75rem;
+    min-height: 2.75rem;
+    padding-bottom: 0.55rem;
+    translate: -0.2rem 0;
+    color: var(--fog-2);
+    font-size: 0.6875rem;
+    font-weight: 620;
+    font-stretch: 125%;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    text-shadow: 0 1px 8px rgb(0 0 0 / 0.8);
+    transition: color var(--dur-fast) ease;
+  }
+
+  /* Le repère : un trait vertical posé sur la timeline */
+  .take__rail a::before {
+    content: '';
+    position: absolute;
+    left: 0.2rem;
+    bottom: 0;
+    width: 1px;
+    height: 0.45rem;
+    background: currentColor;
+    transition: height var(--dur-normal) var(--ease-out);
+  }
+
+  /* Le dernier plan est au bout de la timeline : son nom s'écrit à gauche du repère, sans sortir de l'écran */
+  .take__rail li:last-child a {
+    flex-direction: row-reverse;
+    translate: calc(-100% + 0.2rem) 0;
+  }
+
+  .take__rail li:last-child a::before {
+    left: auto;
+    right: 0.2rem;
+  }
+
+  .take__rail a:hover,
+  .take__rail a:global(.is-current) {
+    color: var(--cream);
+  }
+
+  .take__rail a:global(.is-current)::before {
+    height: 0.8rem;
+    background: var(--tungsten);
+  }
+
+  .take__rail-label {
+    white-space: nowrap;
+    opacity: 0;
+    transition: opacity var(--dur-fast) ease;
+  }
+
+  /* Le nom du plan apparaît au survol, au clavier, et pour le plan en cours */
+  .take__rail a:hover .take__rail-label,
+  .take__rail a:focus-visible .take__rail-label,
+  .take__rail a:global(.is-current) .take__rail-label {
+    opacity: 1;
+  }
+
+  .take__pause {
+    position: absolute;
+    right: var(--gutter);
+    bottom: 3.6rem;
+    min-height: 2.25rem;
+    padding: 0 0.9rem;
+    font-size: 0.625rem;
+  }
+
+  /* L'invitation à défiler se pose au-dessus du bouton pause */
+  .take:global(.is-live) .take__hint {
+    top: auto;
+    bottom: 6.6rem;
+  }
+
+  .take:global(.is-live) .take__spec {
+    top: auto;
+    bottom: 3.6rem;
+    translate: none;
+  }
+
+  /* Écran presque carré (tablette couchée, 4:3) : l'œuvre garde la place, la fiche se resserre */
+  @media (max-aspect-ratio: 3/2) and (min-aspect-ratio: 9/10) {
+    .take:global(.is-live) .stop__card {
+      width: min(24rem, 31vw);
+      padding: 1.1rem 1.1rem 1rem;
+    }
+  }
+
+  /* ── Téléphone et écran en hauteur : l'œuvre en haut, la fiche en bas ── */
+  @media (max-aspect-ratio: 9/10) {
+    /* « NETHER » mesure 5,31 em de large : 16,6vw laisse 5vw de chaque côté */
+    .take__hero {
+      --top: calc(var(--header-h) + 0.75rem);
+      --size: min(16.6vw, 15svh);
+    }
+
+    .take__word {
+      left: 5vw;
+    }
+
+    .take__script {
+      left: auto;
+      right: 6vw;
+      top: calc(var(--top) + var(--size) * 0.72);
+      font-size: min(12.5vw, 9svh);
+      transform-origin: right center;
+    }
+
+
+    .take__hint {
+      display: none;
+    }
+
+    .take:global(.is-live) .stop__card {
+      top: auto;
+      right: var(--gutter);
+      left: var(--gutter);
+      bottom: max(1.6rem, env(safe-area-inset-bottom));
+      width: auto;
+      max-height: 46svh;
+      translate: none;
+      transform: translateY(14px);
+    }
+
+    /* Sur téléphone, la timeline n'est plus qu'une tête de lecture */
+    .take:global(.is-live) .take__rail {
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 2px;
+    }
+
+    .take__rail ol {
+      display: none;
+    }
+
+    /* Le bouton pause devient une icône ronde, à droite de la fiche technique, et au-dessus de la fiche d'un arrêt */
+    .take__pause {
+      bottom: max(1.6rem, env(safe-area-inset-bottom));
+      width: 2.75rem;
+      min-height: 2.75rem;
+      padding: 0;
+      transition: bottom var(--dur-normal) var(--ease-out);
+    }
+
+    .take:global(.has-card) .take__pause {
+      bottom: calc(max(1.6rem, env(safe-area-inset-bottom)) + var(--card-h, 0px) + 0.6rem);
+    }
+
+    .take:global(.is-live) .take__spec {
+      bottom: max(1.6rem, env(safe-area-inset-bottom));
+    }
+
+    .take__pause-label {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+      white-space: nowrap;
+    }
+
+    .take__spec {
+      width: calc(100% - 2 * var(--gutter) - 3.5rem);
+    }
+  }
+
+  @media (max-width: 40rem) {
+    .stop__card {
+      padding: 1.1rem 1.1rem 1rem;
+    }
+
+    /* Téléphone : la fiche tient sous l'œuvre ; le détail reste sur la fiche du projet */
+    .take:global(.is-live) .stop__body {
+      display: none;
+    }
+
+    .take__spec {
+      font-size: 0.78rem;
+      padding: 0.75rem 0.9rem;
+    }
+  }
+
+  /* Écran bas (téléphone couché, petit portable) : la fiche garde l'essentiel */
+  @media (max-height: 40rem) {
+    .take:global(.is-live) .stop__body {
+      display: none;
+    }
+  }
+</style>

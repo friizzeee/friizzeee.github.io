@@ -1,23 +1,16 @@
 ---
 /**
- * Page d'un projet : générée pour chaque projet en ligne de src/data/portfolio.ts.
- * Les sections sans contenu ne s'affichent pas (pas de vidéos multiples, pas de chiffres,
- * pas d'images clés… : elles disparaissent simplement).
+ * Page d'un projet : générée pour chaque projet en ligne de src/data/portfolio.ts (et les coulisses).
+ * Les sections sans contenu ne s'affichent pas : un nouveau projet n'a besoin que de ce qu'il a réellement.
  */
 import type { GetStaticPaths } from 'astro';
+import { Image } from 'astro:assets';
 import BaseLayout from '../../layouts/BaseLayout.astro';
-import { site } from '../../config/site';
+import { site, discordHref, isDiscordConfigured } from '../../config/site';
 import { categoryHref, neighbors, pad, posterOf, projectPages, type Project } from '../../lib/portfolio';
 import Poster from '../../components/portfolio/Poster.astro';
 import PlayTrigger from '../../components/portfolio/PlayTrigger.astro';
-import ProjectContext from '../../components/portfolio/ProjectContext.astro';
-import ProjectVideos from '../../components/portfolio/ProjectVideos.astro';
-import WorkTimeline from '../../components/portfolio/WorkTimeline.astro';
-import ProjectStructure from '../../components/portfolio/ProjectStructure.astro';
-import ProjectEnd from '../../components/portfolio/ProjectEnd.astro';
 import BeforeAfter from '../../components/portfolio/BeforeAfter.astro';
-import PlayerDialog from '../../components/portfolio/PlayerDialog.astro';
-import TrackLabel from '../../components/ui/TrackLabel.astro';
 import Icon from '../../components/ui/Icon.astro';
 
 export const getStaticPaths = (() =>
@@ -30,177 +23,237 @@ interface Props {
 const { project: p } = Astro.props;
 const nav = neighbors(p.slug);
 const poster = await posterOf(p);
-const first = p.playable[0];
-const parts = p.playable.length;
-
-/* La section « vidéos » n'existe que si elle apporte quelque chose : plusieurs parties, des chapitres, une description. */
-const showVideos = parts > 1 || p.playable.some((v) => v.chapters.length > 0 || v.description);
-const playText = first ? (parts > 1 ? `Lire la partie 1 · ${first.duration ?? ''}`.replace(/ · $/, '') : first.playLabel) : '';
-
-/* Fiche du projet */
-const rows: { label: string; value: string; iso?: string }[] = [
+const vertical = p.format === '9:16';
+const external = isDiscordConfigured ? { target: '_blank', rel: 'noopener noreferrer' } : {};
+const playText = (i: number): string => {
+  const v = p.playable[i];
+  if (!v) return '';
+  if (p.playable.length === 1) return v.excerpt ? v.playLabel : `${v.playLabel} · ${v.duration ?? ''}`;
+  return `${vertical ? 'Extrait' : 'Partie'} ${i + 1} · ${v.duration ?? ''}`;
+};
+const rows = [
   { label: 'Créateur', value: p.creator },
   { label: 'Type de montage', value: p.editType },
-  ...(p.duration ? [{ label: 'Durée', value: parts > 1 ? `${p.duration} · ${parts} parties` : p.duration }] : []),
-  ...(p.date ? [{ label: 'Publication', value: p.date.label, iso: p.date.iso }] : []),
-  ...(p.platform ? [{ label: 'Plateforme', value: p.platform }] : []),
-];
-
-/* Sections présentes, numérotées dans l'ordre comme des pistes */
-const sections = [
-  p.context.length > 0 || p.facts.length > 0 || p.compression ? 'context' : null,
-  showVideos ? 'videos' : null,
-  p.tracks.length > 0 ? 'work' : null,
-  p.outline.length > 0 || p.frames.length > 0 ? 'structure' : null,
-  p.beforeAfter ? 'compare' : null,
-  p.tools.length > 0 || p.process.length > 0 ? 'process' : null,
-].filter((s): s is string => s !== null);
-const TRACKS = ['A1', 'V1', 'V2', 'V3', 'A2', 'REC'];
-const slot = (name: string) => {
-  const i = sections.indexOf(name);
-  return { track: TRACKS[i] ?? 'V1', index: pad(i + 1) };
-};
+  p.duration && { label: 'Durée', value: p.playable.length > 1 && !vertical ? `${p.duration} · ${p.playable.length} parties` : p.duration },
+  p.date && { label: 'Publication', value: p.date.label },
+  p.platform && { label: 'Plateforme', value: p.platform },
+].filter((r): r is { label: string; value: string } => Boolean(r));
+const showVideos = p.playable.length > 1 || p.playable.some((v) => v.chapters.length > 0 || v.description);
+const tall = vertical ? p.playable.filter((v) => v.poster).slice(0, 2) : [];
 ---
 
 <BaseLayout title={p.title} description={p.description || `${p.title} : un montage réalisé par ${site.name}.`}>
-  <section class="ph" data-chapter="Projet" data-hero-root>
-    <div class="ph__bg" aria-hidden="true"></div>
-    <div class="wrap">
-      <nav class="ph__crumbs mono" aria-label="Fil d’Ariane" data-hero>
-        <a href="/portfolio" data-cut-label="Portfolio">
-          <Icon name="arrow" />
-          Selected Works
-        </a>
-        {
-          p.categories[0] && (
-            <>
-              <span class="ph__crumb-sep" aria-hidden="true" />
-              <a href={categoryHref(p.categories[0].id)} data-cut-label="Portfolio">
-                {p.categories[0].label}
-              </a>
-            </>
-          )
-        }
-        {nav.total > 1 && <span class="ph__count">{pad(nav.position)} / {pad(nav.total)}</span>}
+  <section class="ph" aria-labelledby="ph-title">
+    <div class:list={['ph__media', vertical && 'ph__media--tall']} aria-hidden="true">
+      {
+        vertical && tall.length > 0 ? (
+          tall.map((v) => <Image src={v.poster!} alt="" widths={[360, 540]} sizes="(min-width: 48rem) 20rem, 44vw" loading="eager" />)
+        ) : (
+          <Poster source={poster} alt="" sizes="100vw" widths={[960, 1280, 1600, 1920]} loading="eager" fetchpriority="high" />
+        )
+      }
+    </div>
+    <span class="ph__shade" aria-hidden="true"></span>
+
+    <div class="ph__content wrap">
+      <nav class="ph__crumbs label" aria-label="Fil d’Ariane">
+        <a href="/portfolio"><Icon name="arrow" /> Réalisations</a>
+        {p.categories[0] && <a href={categoryHref(p.categories[0].id)}>{p.categories[0].label}</a>}
+        {nav.total > 1 && <span class="num">{pad(nav.position)} / {pad(nav.total)}</span>}
       </nav>
+      <h1 class="ph__title" id="ph-title" set:html={p.titleHtml} />
+      {p.subtitle && <p class="ph__subtitle">{p.subtitle}</p>}
 
-      <h1 class="ph__title h-display" data-hero aria-label={p.title}>
-        <span class="ph__line" aria-hidden="true"><span data-hero-line set:html={p.titleHtml} /></span>
-      </h1>
-      {p.subtitle && <p class="ph__subtitle" data-hero>{p.subtitle}</p>}
-
-      <div class="ph__grid">
-        <div class="ph__media-col">
-          <div class="ph__ambient" aria-hidden="true">
-            <Poster source={poster} alt="" sizes="320px" widths={[320]} />
+      <div class="ph__card glass">
+        {p.description && <p class="ph__lede">{p.description}</p>}
+        <dl class="ph__facts">
+          {
+            rows.map((r) => (
+              <div>
+                <dt>{r.label}</dt>
+                <dd>{r.value}</dd>
+              </div>
+            ))
+          }
+          <div>
+            <dt>Univers</dt>
+            <dd class="ph__cats">
+              {p.categories.map((c) => <a href={categoryHref(c.id)}>{c.label}</a>)}
+            </dd>
           </div>
-          <div class="ph__media card" data-morph-target data-preview-card={p.preview ? '' : undefined} data-follow-area>
-            <span class="ph__zoom" data-zoom="1.06">
-              <Poster
-                source={poster}
-                alt={`Image du montage « ${p.title} »`}
-                sizes="(min-width: 64rem) 64vw, 100vw"
-                class="ph__poster"
-                loading="eager"
-                fetchpriority="high"
-              />
-              {
-                p.preview && (
-                  <video class="ph__preview" muted loop playsinline preload="none" data-src={p.preview} aria-hidden="true" />
-                )
-              }
-            </span>
-            <span class="ph__overlay" aria-hidden="true">
-              <span class="corners"><i></i><i></i><i></i><i></i></span>
-              {p.preview && <span class="ph__tag ph__tag--tl mono"><span class="rec-dot"></span>Aperçu</span>}
-              <span class="ph__tag ph__tag--tr mono">{p.format}</span>
-              {p.duration && <span class="ph__tag ph__tag--br mono">{p.duration}</span>}
-            </span>
-            {
-              p.preview && (
-                <span class="ph__progress" aria-hidden="true">
-                  <i data-preview-progress />
-                </span>
-              )
-            }
-            {
-              first &&
-                (showVideos ? (
-                  <button type="button" class="ph__play" data-play-for={first.anchor} data-follow>
-                    <span class="ph__play-icon" aria-hidden="true">
-                      <Icon name="play" />
-                    </span>
-                    <span class="ph__play-label">{playText}</span>
-                  </button>
-                ) : (
-                  <PlayTrigger project={p} video={first} class="ph__play" data-follow>
-                    <span class="ph__play-icon" aria-hidden="true">
-                      <Icon name="play" />
-                    </span>
-                    <span class="ph__play-label">{playText}</span>
-                  </PlayTrigger>
-                ))
-            }
+          <div>
+            <dt>Montage</dt>
+            <dd>{site.name}</dd>
           </div>
+        </dl>
+        <div class="ph__actions">
+          {
+            p.playable.map((v, i) => (
+              <PlayTrigger project={p} video={v} anchor class:list={['pill', i === 0 ? 'pill--solid' : 'pill--glass']}>
+                <Icon name="play" />
+                {playText(i)}
+              </PlayTrigger>
+            ))
+          }
         </div>
-
-        <aside class="ph__sheet" aria-label="Fiche du projet" data-hero>
-          {p.description && <p class="ph__lede">{p.description}</p>}
-          <dl class="ph__facts">
-            {
-              rows.map((row) => (
-                <div>
-                  <dt class="mono">{row.label}</dt>
-                  <dd>{row.iso ? <time datetime={row.iso}>{row.value}</time> : row.value}</dd>
-                </div>
-              ))
-            }
-            <div>
-              <dt class="mono">Univers</dt>
-              <dd class="ph__cats">
-                {
-                  p.categories.map((c) => (
-                    <a href={categoryHref(c.id)} class="chip ph__cat" data-cut-label="Portfolio">
-                      {c.label}
-                    </a>
-                  ))
-                }
-              </dd>
-            </div>
-            <div class="ph__fact--me">
-              <dt class="mono">Montage</dt>
-              <dd>
-                <span class="rec-dot" aria-hidden="true"></span>
-                Réalisé par {site.name}
-              </dd>
-            </div>
-          </dl>
-          <a href="#contact-projet" class="ph__ask">
-            <span>Un projet du même genre ? Parlons-en</span>
-            <Icon name="arrow-down" />
-          </a>
-        </aside>
       </div>
     </div>
-    <PlayerDialog />
   </section>
 
-  {sections.includes('context') && <ProjectContext project={p} {...slot('context')} />}
-  {sections.includes('videos') && <ProjectVideos project={p} {...slot('videos')} />}
-  {sections.includes('work') && <WorkTimeline project={p} {...slot('work')} />}
-  {sections.includes('structure') && <ProjectStructure project={p} {...slot('structure')} />}
+  {
+    (p.context.length > 0 || p.facts.length > 0 || p.compression) && (
+      <section class="pp" aria-labelledby="pp-context">
+        <div class="wrap pp__grid">
+          <div>
+            <p class="label">Le contexte</p>
+            <h2 class="pp__title" id="pp-context">
+              Ce qu’il fallait <span class="script">raconter.</span>
+            </h2>
+          </div>
+          <div class="pp__text">
+            {p.context.map((t) => <p>{t}</p>)}
+            {p.compression && (
+              <div class="pp__cut" aria-label={`Rush de ${p.compression.raw}, montage de ${p.compression.final}`}>
+                <p class="label">
+                  Rush {p.compression.raw} → montage {p.compression.final}
+                </p>
+                <span class="pp__cut-raw">
+                  <i style={`--kept:${(p.compression.finalSeconds / p.compression.rawSeconds).toFixed(4)}`} />
+                </span>
+              </div>
+            )}
+          </div>
+          {p.facts.length > 0 && (
+            <dl class="pp__facts">
+              {p.facts.map((f) => (
+                <div>
+                  <dt>{f.label}</dt>
+                  <dd class="num">{f.value}</dd>
+                </div>
+              ))}
+            </dl>
+          )}
+        </div>
+      </section>
+    )
+  }
+
+  {
+    showVideos && (
+      <section class="pp" aria-labelledby="pp-videos">
+        <div class="wrap">
+          <p class="label">Les vidéos</p>
+          <h2 class="pp__title" id="pp-videos">
+            {p.playable.length > 1 ? `${p.playable.length} ${vertical ? 'extraits' : 'parties'}, à lire dans l’ordre.` : 'La vidéo.'}
+          </h2>
+          <ol class="pv">
+            {p.playable.map((v, i) => (
+              <li class:list={['pv__item', vertical && 'pv__item--tall']}>
+                <PlayTrigger project={p} video={v} class="pv__thumb" aria-label={`Lire : ${v.title}`}>
+                  {v.poster && <Image src={v.poster} alt="" widths={vertical ? [240, 360] : [480, 720]} sizes="(min-width: 48rem) 22rem, 100vw" />}
+                  <span class="pv__play" aria-hidden="true">
+                    <Icon name="play" />
+                  </span>
+                </PlayTrigger>
+                <div class="pv__body">
+                  <p class="label num">
+                    {pad(i + 1)} {v.duration && `· ${v.duration}`}
+                  </p>
+                  <h3 class="pv__title">{v.title}</h3>
+                  {v.description && <p class="muted">{v.description}</p>}
+                  {v.chapters.length > 0 && (
+                    <ol class="pv__chapters">
+                      {v.chapters.map((c) => (
+                        <li>
+                          <span class="num">{c.time}</span> {c.label}
+                        </li>
+                      ))}
+                    </ol>
+                  )}
+                  {v.credits && <p class="pv__credits">{v.credits}</p>}
+                </div>
+              </li>
+            ))}
+          </ol>
+        </div>
+      </section>
+    )
+  }
+
+  {
+    p.tracks.length > 0 && (
+      <section class="pp" aria-labelledby="pp-work">
+        <div class="wrap">
+          <p class="label">Ce que j’ai fait</p>
+          <h2 class="pp__title" id="pp-work">
+            Piste par <span class="script">piste.</span>
+          </h2>
+          <div class="tracks">
+            {p.tracks.map((track) => (
+              <div class="tracks__row">
+                <p class="tracks__name">
+                  <span class="num">{track.id}</span> {track.name}
+                </p>
+                <ul class="tracks__items">
+                  {track.items.map((item) => (
+                    <li>
+                      <strong>{item.label}</strong>
+                      {item.detail && <span class="muted"> {item.detail}</span>}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+    )
+  }
+
+  {
+    (p.outline.length > 0 || p.frames.length > 0) && (
+      <section class="pp" aria-labelledby="pp-structure">
+        <div class="wrap">
+          <p class="label">La structure</p>
+          <h2 class="pp__title" id="pp-structure">
+            {p.outline.length} chapitres, une <span class="script">histoire.</span>
+          </h2>
+          {p.outline.length > 0 && (
+            <ol class="outline">
+              {p.outline.map((c) => (
+                <li style={`--share:${(c.to - c.from).toFixed(4)}`}>
+                  <span class="num">{c.time}</span>
+                  <span>{c.label}</span>
+                </li>
+              ))}
+            </ol>
+          )}
+          {p.frames.length > 0 && (
+            <ul class="frames">
+              {p.frames.map((f) => (
+                <li>
+                  <Image src={f.image} alt={`${f.label}, à ${f.time}`} widths={[480, 720]} sizes="(min-width: 48rem) 30vw, 100vw" />
+                  <p>
+                    <span class="num">{f.time}</span> {f.label}
+                  </p>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </section>
+    )
+  }
 
   {
     p.beforeAfter && (
-      <section id="avant-apres" class="section pcmp" data-chapter="Avant / après">
+      <section class="pp" aria-labelledby="pp-compare">
         <div class="wrap">
-          <header class="ps-head">
-            <TrackLabel {...slot('compare')} label="Avant / après" />
-            <h2 class="ps-title" data-reveal="lines">
-              Avant, <span class="serif">après.</span>
-            </h2>
-          </header>
-          <div class="pcmp__frame" data-reveal="clip">
+          <p class="label">Avant / après</p>
+          <h2 class="pp__title" id="pp-compare">
+            Avant, <span class="script">après.</span>
+          </h2>
+          <div class="pp__compare">
             <BeforeAfter {...p.beforeAfter} title={p.title} />
           </div>
         </div>
@@ -209,554 +262,587 @@ const slot = (name: string) => {
   }
 
   {
-    sections.includes('process') && (
-      <section id="coulisses" class="section pproc" data-chapter="Coulisses">
+    (p.process.length > 0 || p.tools.length > 0) && (
+      <section class="pp" aria-labelledby="pp-process">
         <div class="wrap">
-          <header class="ps-head">
-            <TrackLabel {...slot('process')} label="Coulisses" />
-            <h2 class="ps-title" data-reveal="lines">
-              Les <span class="serif">coulisses.</span>
-            </h2>
-          </header>
-          <div class="pproc__grid">
-            {p.process.length > 0 && (
-              <ol class="pproc__steps" data-reveal="stagger">
-                {p.process.map((step, i) => (
-                  <li>
-                    <span class="mono pproc__num">{pad(i + 1)}</span>
-                    <div>
-                      <h3 class="pproc__title">{step.title}</h3>
-                      <p>{step.text}</p>
-                    </div>
-                  </li>
-                ))}
-              </ol>
-            )}
-            {p.tools.length > 0 && (
-              <div class="pproc__tools">
-                <p class="mono">Outils utilisés</p>
-                <ul>
-                  {p.tools.map((tool) => (
-                    <li class="chip">{tool}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
-          </div>
+          <p class="label">Les étapes</p>
+          <h2 class="pp__title" id="pp-process">
+            Ce qu’on voit <span class="script">à l’écran.</span>
+          </h2>
+          <ol class="steps">
+            {p.process.map((s, i) => (
+              <li>
+                <span class="label num">{pad(i + 1)}</span>
+                <h3>{s.title}</h3>
+                <p class="muted">{s.text}</p>
+              </li>
+            ))}
+          </ol>
+          {p.tools.length > 0 && <p class="pp__tools">Outil : {p.tools.join(', ')}</p>}
         </div>
       </section>
     )
   }
 
-  <ProjectEnd prev={nav.prev} next={nav.next} />
+  <section class="pend" aria-label="Suite">
+    <div class="wrap pend__grid">
+      {
+        nav.prev && (
+          <a class="pend__link" href={nav.prev.href}>
+            <span class="label">Projet précédent</span>
+            <span class="pend__name" set:html={nav.prev.titleHtml} />
+          </a>
+        )
+      }
+      {
+        nav.next && (
+          <a class="pend__link pend__link--next" href={nav.next.href}>
+            <span class="label">Projet suivant</span>
+            <span class="pend__name" set:html={nav.next.titleHtml} />
+          </a>
+        )
+      }
+      <div class="pend__cta">
+        <h2 class="h-title">Un projet du même genre ?</h2>
+        <a class="pill pill--solid pill--lg" href={discordHref} {...external}>
+          <Icon name="discord" />
+          Écrire sur Discord
+        </a>
+      </div>
+    </div>
+  </section>
 </BaseLayout>
 
 <style>
-  /* ── En-tête ────────────────────────────────── */
   .ph {
     position: relative;
-    isolation: isolate;
-    padding-top: calc(var(--header-h) + clamp(2rem, 6vw, 4.5rem));
-    padding-bottom: clamp(4.5rem, 9vw, 8rem);
+    display: grid;
+    align-items: end;
+    min-height: 100svh;
+    padding: calc(var(--header-h) + 2rem) 0 var(--gutter);
+    overflow: hidden;
   }
 
-  .ph__bg {
+  .ph__media {
     position: absolute;
     inset: 0;
-    z-index: -1;
+  }
+
+  .ph__media :global(img) {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .ph__media--tall {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 1.25rem;
+    padding: calc(var(--header-h) + 1rem) var(--gutter) var(--gutter);
+    background: radial-gradient(ellipse 60% 70% at 70% 50%, var(--night-3), var(--night));
+  }
+
+  .ph__media--tall :global(img) {
+    width: min(20rem, 30vw);
+    height: auto;
+    aspect-ratio: 9 / 16;
+    border-radius: var(--radius-md);
+  }
+
+  /* Voile appuyé : les affiches portent souvent du texte incrusté, le titre doit rester lisible par-dessus */
+  .ph__shade {
+    position: absolute;
+    inset: 0;
     background:
-      radial-gradient(ellipse 55% 45% at 72% 22%, rgb(229 22 42 / 0.13), transparent 70%),
-      linear-gradient(90deg, rgb(255 255 255 / 0.03) 1px, transparent 1px) 0 0 / calc(100% / 12) 100%;
-    -webkit-mask-image: linear-gradient(180deg, #000 50%, transparent);
-    mask-image: linear-gradient(180deg, #000 50%, transparent);
-    pointer-events: none;
+      linear-gradient(180deg, rgb(11 9 7 / 0.7), rgb(11 9 7 / 0.35) 30%),
+      linear-gradient(0deg, rgb(11 9 7 / 0.94), rgb(11 9 7 / 0.62) 55%, rgb(11 9 7 / 0.2));
+  }
+
+  .ph__content {
+    position: relative;
+    display: grid;
+    gap: 1rem;
+    justify-items: start;
   }
 
   .ph__crumbs {
     display: flex;
     flex-wrap: wrap;
-    align-items: center;
-    gap: 0.25rem 0.9rem;
-    margin-bottom: clamp(1.25rem, 3vw, 2.25rem);
-    color: var(--color-fog-400);
-    font-size: 0.64rem;
+    gap: 0.5rem 1.25rem;
+    color: var(--fog);
   }
 
   .ph__crumbs a {
     display: inline-flex;
     align-items: center;
-    gap: 0.55rem;
+    gap: 0.4rem;
     min-height: 2.75rem;
-    color: var(--color-fog-300);
-    transition: color 0.3s ease;
+    color: var(--cream);
   }
 
-  .ph__crumbs a:first-child {
-    color: var(--color-fog-100);
-  }
-
-  .ph__crumbs a :global(svg) {
-    width: 0.95rem;
-    height: 0.95rem;
+  .ph__crumbs :global(svg) {
+    width: 0.9rem;
+    height: 0.9rem;
     rotate: 180deg;
-    transition: translate 0.6s var(--ease-expo);
   }
 
-  .ph__crumbs a:hover {
-    color: var(--color-rec-bright);
-  }
-
-  .ph__crumbs a:hover :global(svg) {
-    translate: -0.25rem 0;
-  }
-
-  .ph__crumb-sep {
-    width: 1rem;
-    height: 1px;
-    background: var(--line-strong);
-  }
-
-  .ph__count {
-    margin-left: auto;
-    color: var(--color-fog-300);
-    font-variant-numeric: tabular-nums;
+  .ph__crumbs .num {
+    display: inline-flex;
+    align-items: center;
   }
 
   .ph__title {
-    max-width: 15ch;
-    font-size: clamp(2.7rem, 8.6vw, 8.75rem);
+    max-width: 16ch;
+    font-size: clamp(2.8rem, 7.5vw, 7rem);
+    font-weight: 820;
+    font-stretch: 122%;
+    letter-spacing: -0.04em;
+    line-height: 0.92;
+    text-wrap: balance;
   }
 
-  .ph__line {
-    display: block;
-    overflow: hidden;
-    padding: 0.02em 0.1em 0.1em;
-    margin: -0.02em -0.1em -0.1em;
-  }
-
-  .ph__line > span {
-    display: block;
-  }
-
-  .ph__title :global(em) {
-    color: var(--color-fog-300);
+  .ph__title :global(em),
+  .pend__name :global(em) {
+    font-family: var(--script);
+    font-size: 1.25em;
+    font-style: normal;
+    font-weight: 400;
+    letter-spacing: 0;
+    color: var(--tungsten);
   }
 
   .ph__subtitle {
-    margin-top: 1.1rem;
-    color: var(--color-fog-400);
-    font-family: var(--font-serif);
-    font-style: italic;
-    font-size: clamp(1.25rem, 1.9vw, 1.6rem);
+    color: var(--fog);
+    font-weight: 560;
   }
 
-  .ph__grid {
+  .ph__card {
     display: grid;
-    gap: clamp(2rem, 4vw, 3.5rem);
-    margin-top: clamp(2.25rem, 5vw, 4rem);
-  }
-
-  @media (min-width: 64rem) {
-    .ph__grid {
-      grid-template-columns: minmax(0, 8fr) minmax(0, 4fr);
-      align-items: start;
-    }
-
-    .ph__sheet {
-      position: sticky;
-      top: calc(var(--header-h) + 1.5rem);
-    }
-  }
-
-  /* ── Image : mode ambiant, aperçu, bouton de lecture qui suit la souris ── */
-  .ph__media-col {
-    position: relative;
-    isolation: isolate;
-  }
-
-  .ph__ambient {
-    position: absolute;
-    inset: -4% -3% auto;
-    z-index: -1;
-    aspect-ratio: 16 / 9;
-    opacity: 0.4;
-    filter: blur(60px) saturate(1.5);
-    transform: translateZ(0);
-    pointer-events: none;
-  }
-
-  .ph__ambient :global(img) {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-  }
-
-  .ph__media {
-    position: relative;
-    aspect-ratio: 16 / 9;
-    overflow: hidden;
-    border-radius: var(--radius-xl);
-    background: var(--color-ink-800);
-    box-shadow:
-      inset 0 1px 0 rgb(255 255 255 / 0.06),
-      0 40px 90px -40px rgb(0 0 0 / 0.95);
-  }
-
-  .ph__zoom {
-    position: absolute;
-    inset: 0;
-    display: block;
-    will-change: transform;
-  }
-
-  .ph__media :global(.ph__poster),
-  .ph__preview {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    transition:
-      scale 1.4s var(--ease-expo),
-      opacity 0.6s ease;
-  }
-
-  .ph__preview {
-    opacity: 0;
-  }
-
-  .ph__media:global(.is-previewing) .ph__preview {
-    opacity: 1;
-  }
-
-  .ph__media:hover :global(.ph__poster),
-  .ph__media:hover .ph__preview {
-    scale: 1.035;
-  }
-
-  .ph__overlay {
-    position: absolute;
-    inset: 1rem;
-    z-index: 1;
-    pointer-events: none;
-  }
-
-  /* Dégradé bas : le bouton reste lisible sur une image claire */
-  .ph__overlay::before {
-    content: '';
-    position: absolute;
-    inset: auto -1rem -1rem;
-    height: 45%;
-    background: linear-gradient(0deg, rgb(0 0 0 / 0.55), transparent);
-  }
-
-  .ph__overlay .corners :global(i) {
-    border-color: rgb(255 255 255 / 0.55);
-    transition: translate 0.7s var(--ease-expo);
-  }
-
-  .ph__media:hover .ph__overlay .corners :global(i:nth-child(1)) {
-    translate: 6px 6px;
-  }
-  .ph__media:hover .ph__overlay .corners :global(i:nth-child(2)) {
-    translate: -6px 6px;
-  }
-  .ph__media:hover .ph__overlay .corners :global(i:nth-child(3)) {
-    translate: 6px -6px;
-  }
-  .ph__media:hover .ph__overlay .corners :global(i:nth-child(4)) {
-    translate: -6px -6px;
-  }
-
-  .ph__tag {
-    position: absolute;
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.35rem 0.6rem;
-    border-radius: 6px;
-    background: rgb(0 0 0 / 0.6);
-    color: var(--color-fog-100);
-    font-size: 0.6rem;
-  }
-
-  .ph__tag--tl {
-    top: 0.85rem;
-    left: 0.85rem;
-  }
-
-  .ph__tag--tr {
-    top: 0.85rem;
-    right: 0.85rem;
-  }
-
-  .ph__tag--br {
-    right: 0.85rem;
-    bottom: 0.85rem;
-    background: rgb(0 0 0 / 0.75);
-    font-size: 0.7rem;
-    font-variant-numeric: tabular-nums;
-  }
-
-  .ph__progress {
-    position: absolute;
-    inset: auto 0 0;
-    z-index: 2;
-    height: 3px;
-    background: rgb(255 255 255 / 0.12);
-    opacity: 0;
-    transition: opacity 0.4s ease;
-    pointer-events: none;
-  }
-
-  .ph__progress i {
-    position: absolute;
-    inset: 0;
-    background: var(--color-rec);
-    box-shadow: 0 0 10px rgb(229 22 42 / 0.9);
-    transform: scaleX(var(--vp, 0));
-    transform-origin: left;
-  }
-
-  .ph__media:global(.is-previewing) .ph__progress {
-    opacity: 1;
-  }
-
-  .ph__media :global(.ph__play) {
-    position: absolute;
-    left: 1.85rem;
-    bottom: 1.85rem;
-    z-index: 3;
-    display: inline-flex;
-    align-items: center;
-    gap: 0.85rem;
-    padding: 0.5rem 1.4rem 0.5rem 0.5rem;
-    border-radius: 999px;
-    border: 1px solid rgb(255 255 255 / 0.18);
-    background: rgb(10 10 12 / 0.55);
-    backdrop-filter: blur(14px);
-    -webkit-backdrop-filter: blur(14px);
-    color: #fff;
-    font-size: 0.92rem;
-    font-weight: 500;
-    cursor: pointer;
-    transition:
-      background-color 0.4s ease,
-      border-color 0.4s ease;
-  }
-
-  /* Toute l'image lance la lecture (zone rognée par le cadre arrondi) */
-  .ph__media :global(.ph__play)::after {
-    content: '';
-    position: absolute;
-    inset: -100vmax;
-  }
-
-  .ph__media:hover :global(.ph__play) {
-    border-color: rgb(255 255 255 / 0.32);
-    background: rgb(10 10 12 / 0.78);
-  }
-
-  .ph__play-icon {
-    display: grid;
-    place-items: center;
-    width: 3rem;
-    height: 3rem;
-    border-radius: 50%;
-    background: var(--color-rec);
-    animation: ph-pulse 2.4s ease-out infinite;
-  }
-
-  .ph__play-icon :global(svg) {
-    width: 1.1rem;
-    height: 1.1rem;
-    margin-left: 2px;
-  }
-
-  @media (max-width: 40rem) {
-    .ph__media :global(.ph__play) {
-      left: 1rem;
-      bottom: 1rem;
-      padding-right: 0.5rem;
-    }
-
-    .ph__play-label {
-      position: absolute;
-      width: 1px;
-      height: 1px;
-      overflow: hidden;
-      clip-path: inset(50%);
-    }
-  }
-
-  /* ── Fiche ──────────────────────────────────── */
-  .ph__sheet {
-    display: grid;
-    gap: 1.5rem;
-    align-content: start;
+    gap: 1rem;
+    width: min(100%, 34rem);
+    margin-top: 1rem;
+    padding: 1.3rem 1.4rem;
   }
 
   .ph__lede {
-    color: var(--color-fog-100);
-    font-size: clamp(1.1rem, 1.4vw, 1.25rem);
-    line-height: 1.5;
-    letter-spacing: -0.012em;
+    font-weight: 540;
+    line-height: 1.45;
   }
 
   .ph__facts {
     display: grid;
-    border-top: 1px solid var(--line-strong);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem 1.25rem;
+    margin: 0;
   }
 
-  .ph__facts > div {
-    display: grid;
-    grid-template-columns: 7.5rem minmax(0, 1fr);
-    gap: 1rem;
-    align-items: baseline;
-    padding-block: 0.85rem;
-    border-bottom: 1px solid var(--line);
-  }
-
-  .ph__facts dt {
-    color: var(--color-fog-400);
-    font-size: 0.6rem;
+  .ph__facts dt,
+  .pp__facts dt {
+    color: var(--fog-2);
+    font-size: 0.6875rem;
+    font-weight: 620;
+    font-stretch: 125%;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
   }
 
   .ph__facts dd {
-    display: inline-flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 0.4rem 0.6rem;
-    font-size: 1rem;
-    font-weight: 500;
-    letter-spacing: -0.015em;
-  }
-
-  .ph__cat {
-    transition:
-      border-color 0.3s ease,
-      color 0.3s ease;
-  }
-
-  .ph__cat:hover,
-  .ph__cat:focus-visible {
-    border-color: rgb(255 77 90 / 0.55);
-    color: var(--color-fog-100);
-  }
-
-  .ph__fact--me dd {
-    color: var(--color-rec-bright);
-  }
-
-  .ph__ask {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.6rem;
-    justify-self: start;
-    min-height: 2.75rem;
-    color: var(--color-fog-300);
-    font-size: 0.92rem;
-    text-decoration: underline;
-    text-decoration-color: rgb(255 77 90 / 0.5);
-    text-underline-offset: 0.35em;
-    transition:
-      color 0.3s ease,
-      text-decoration-color 0.3s ease;
-  }
-
-  .ph__ask :global(svg) {
-    width: 0.95rem;
-    height: 0.95rem;
-    color: var(--color-rec-bright);
-  }
-
-  .ph__ask:hover {
-    color: var(--color-fog-100);
-    text-decoration-color: var(--color-rec-bright);
-  }
-
-  /* ── Avant / après ── */
-  .pcmp {
-    border-top: 1px solid var(--line);
-  }
-
-  .pcmp__frame {
-    position: relative;
-    aspect-ratio: 16 / 9;
-    overflow: hidden;
-    border-radius: var(--radius-xl);
-    border: 1px solid var(--line);
-  }
-
-  /* ── Coulisses : étapes et outils ── */
-  .pproc {
-    border-top: 1px solid var(--line);
-  }
-
-  .pproc__grid {
-    display: grid;
-    gap: clamp(2.5rem, 5vw, 4rem);
-  }
-
-  @media (min-width: 64rem) {
-    .pproc__grid {
-      grid-template-columns: minmax(0, 7fr) minmax(0, 4fr);
-      align-items: start;
-    }
-  }
-
-  .pproc__steps {
-    display: grid;
-    border-top: 1px solid var(--line);
-  }
-
-  .pproc__steps li {
-    display: grid;
-    grid-template-columns: 3rem minmax(0, 1fr);
-    gap: 1rem;
-    padding-block: 1.5rem;
-    border-bottom: 1px solid var(--line);
-  }
-
-  .pproc__num {
-    padding-top: 0.35rem;
-    color: var(--color-rec-bright);
-  }
-
-  .pproc__title {
-    font-size: 1.3rem;
+    margin: 0.15rem 0 0;
     font-weight: 560;
-    letter-spacing: -0.025em;
   }
 
-  .pproc__steps p {
-    margin-top: 0.5rem;
-    color: var(--color-fog-300);
+  .ph__cats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem 0.75rem;
   }
 
-  .pproc__tools {
-    display: grid;
-    gap: 1rem;
+  .ph__cats a {
+    text-decoration: underline;
+    text-decoration-color: var(--hair-strong);
+    text-underline-offset: 0.25em;
   }
 
-  .pproc__tools .mono {
-    color: var(--color-fog-400);
-    font-size: 0.62rem;
-  }
-
-  .pproc__tools ul {
+  .ph__actions {
     display: flex;
     flex-wrap: wrap;
     gap: 0.5rem;
   }
 
-  @keyframes ph-pulse {
-    0% {
-      box-shadow: 0 0 0 0 rgb(229 22 42 / 0.55);
+  /* ── Sections ── */
+  .pp {
+    padding-block: clamp(4rem, 8vw, 7rem);
+    border-top: 1px solid var(--hair);
+  }
+
+  .pp__grid {
+    display: grid;
+    grid-template-columns: minmax(0, 4fr) minmax(0, 8fr);
+    gap: 2rem clamp(2rem, 6vw, 6rem);
+  }
+
+  .pp__title {
+    margin-top: 0.6rem;
+    font-size: clamp(2rem, 3.8vw, 3.2rem);
+    font-weight: 740;
+    font-stretch: 116%;
+    letter-spacing: -0.035em;
+    line-height: 1.02;
+  }
+
+  .pp__title .script {
+    font-size: 1.3em;
+    font-weight: 400;
+    color: var(--tungsten);
+  }
+
+  .pp__text {
+    display: grid;
+    gap: 1rem;
+    max-width: 44rem;
+    color: var(--fog);
+    font-size: 1.05rem;
+  }
+
+  .pp__cut {
+    display: grid;
+    gap: 0.6rem;
+    margin-top: 0.5rem;
+  }
+
+  .pp__cut-raw {
+    position: relative;
+    display: block;
+    height: 0.9rem;
+    border-radius: 0.3rem;
+    background: repeating-linear-gradient(90deg, rgb(239 228 200 / 0.3) 0 3px, rgb(239 228 200 / 0.1) 3px 9px);
+  }
+
+  .pp__cut-raw i {
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: calc(var(--kept) * 100%);
+    border-radius: inherit;
+    background: var(--cream);
+  }
+
+  .pp__facts {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+    margin: 1rem 0 0;
+    border-top: 1px solid var(--hair-strong);
+  }
+
+  .pp__facts > div {
+    display: flex;
+    flex-direction: column-reverse;
+    gap: 0.4rem;
+    padding: 1.25rem 1.5rem 0 0;
+  }
+
+  .pp__facts dd {
+    margin: 0;
+    font-size: clamp(2rem, 4vw, 3.4rem);
+    font-weight: 840;
+    font-stretch: 125%;
+    letter-spacing: -0.04em;
+    line-height: 1;
+  }
+
+  .pv {
+    display: grid;
+    gap: 2rem;
+    margin: 2.5rem 0 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .pv__item {
+    display: grid;
+    grid-template-columns: minmax(0, 22rem) minmax(0, 1fr);
+    gap: clamp(1.25rem, 3vw, 2.5rem);
+    padding-top: 2rem;
+    border-top: 1px solid var(--hair);
+  }
+
+  .pv__item--tall {
+    grid-template-columns: minmax(0, 12rem) minmax(0, 1fr);
+  }
+
+  .pv__thumb {
+    position: relative;
+    display: block;
+    width: 100%;
+    padding: 0;
+    overflow: hidden;
+    border: 0;
+    border-radius: var(--radius-md);
+    background: var(--night-2);
+  }
+
+  .pv__thumb :global(img) {
+    width: 100%;
+    transition: transform var(--dur-crawl) var(--ease-expo);
+  }
+
+  .pv__thumb:hover :global(img) {
+    transform: scale(1.04);
+  }
+
+  .pv__play {
+    position: absolute;
+    left: 0.75rem;
+    bottom: 0.75rem;
+    display: grid;
+    place-items: center;
+    width: 2.75rem;
+    height: 2.75rem;
+    border-radius: 50%;
+    background: var(--cream);
+    color: var(--night);
+  }
+
+  .pv__play :global(svg) {
+    width: 1rem;
+    height: 1rem;
+    margin-left: 2px;
+  }
+
+  .pv__body {
+    display: grid;
+    gap: 0.6rem;
+    align-content: start;
+  }
+
+  .pv__title {
+    font-size: clamp(1.3rem, 2vw, 1.7rem);
+    font-weight: 720;
+    font-stretch: 112%;
+    letter-spacing: -0.025em;
+    line-height: 1.1;
+  }
+
+  .pv__chapters {
+    display: grid;
+    gap: 0.3rem;
+    margin: 0.4rem 0 0;
+    padding: 0;
+    list-style: none;
+    font-size: 0.92rem;
+  }
+
+  .pv__chapters .num {
+    display: inline-block;
+    min-width: 3rem;
+    color: var(--tungsten);
+    font-weight: 620;
+  }
+
+  .pv__credits {
+    color: var(--fog-2);
+    font-size: 0.8rem;
+  }
+
+  .tracks {
+    margin-top: 2.5rem;
+    border-top: 1px solid var(--hair-strong);
+  }
+
+  .tracks__row {
+    display: grid;
+    grid-template-columns: minmax(0, 12rem) minmax(0, 1fr);
+    gap: 1.5rem;
+    padding-block: 1.4rem;
+    border-bottom: 1px solid var(--hair);
+  }
+
+  .tracks__name {
+    font-weight: 720;
+    font-stretch: 112%;
+  }
+
+  .tracks__name .num {
+    display: inline-grid;
+    place-items: center;
+    min-width: 2.2rem;
+    margin-right: 0.5rem;
+    padding: 0.15rem 0.4rem;
+    border-radius: 0.35rem;
+    background: var(--cream);
+    color: var(--night);
+    font-size: 0.75rem;
+  }
+
+  .tracks__items {
+    display: grid;
+    gap: 0.75rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .outline {
+    display: flex;
+    gap: 3px;
+    margin: 2.5rem 0 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .outline li {
+    flex: var(--share) 1 0;
+    min-width: 0;
+    padding: 0.7rem 0.6rem;
+    border-radius: 0.4rem;
+    background: rgb(239 228 200 / 0.08);
+    box-shadow: inset 0 0 0 1px var(--hair);
+    font-size: 0.78rem;
+    line-height: 1.3;
+    overflow: hidden;
+  }
+
+  .outline .num {
+    display: block;
+    color: var(--tungsten);
+    font-weight: 620;
+  }
+
+  .frames {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+    gap: 1.25rem;
+    margin: 2.5rem 0 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .frames :global(img) {
+    width: 100%;
+    border-radius: var(--radius-md);
+  }
+
+  .frames p {
+    margin-top: 0.6rem;
+    font-size: 0.9rem;
+  }
+
+  .frames .num {
+    color: var(--tungsten);
+    font-weight: 620;
+  }
+
+  .steps {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+    gap: 1.5rem;
+    margin: 2.5rem 0 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .steps li {
+    display: grid;
+    gap: 0.5rem;
+    padding-top: 1.2rem;
+    border-top: 1px solid var(--hair-strong);
+  }
+
+  .steps h3 {
+    font-size: 1.3rem;
+    font-weight: 720;
+    font-stretch: 112%;
+  }
+
+  .pp__tools {
+    margin-top: 2rem;
+    color: var(--fog);
+  }
+
+  .pend {
+    padding-block: clamp(4rem, 8vw, 6rem);
+    border-top: 1px solid var(--hair);
+  }
+
+  .pend__grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 2rem;
+  }
+
+  .pend__link {
+    display: grid;
+    gap: 0.5rem;
+    padding: 1.5rem 0;
+    border-top: 1px solid var(--hair-strong);
+  }
+
+  .pend__link--next {
+    text-align: right;
+  }
+
+  .pend__name {
+    font-size: clamp(1.5rem, 3vw, 2.4rem);
+    font-weight: 760;
+    font-stretch: 116%;
+    letter-spacing: -0.03em;
+    line-height: 1.05;
+  }
+
+  .pend__link:hover .pend__name {
+    text-decoration: underline;
+    text-decoration-thickness: 2px;
+    text-underline-offset: 0.15em;
+  }
+
+  .pend__cta {
+    grid-column: 1 / -1;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1.5rem;
+    margin-top: 2rem;
+  }
+
+  @media (max-width: 48rem) {
+    .ph__media--tall {
+      justify-content: center;
+      align-items: flex-start;
+      padding-top: calc(var(--header-h) + 0.5rem);
     }
-    70%,
-    100% {
-      box-shadow: 0 0 0 18px rgb(229 22 42 / 0);
+
+    .ph__media--tall :global(img) {
+      width: 42vw;
+    }
+
+    .pp__grid,
+    .pv__item,
+    .pv__item--tall,
+    .tracks__row,
+    .pend__grid {
+      grid-template-columns: 1fr;
+    }
+
+    .pv__item--tall .pv__thumb {
+      width: min(12rem, 60%);
+    }
+
+    .ph__facts {
+      grid-template-columns: 1fr 1fr;
+    }
+
+    .outline {
+      flex-wrap: wrap;
+    }
+
+    .outline li {
+      flex-basis: 45%;
+    }
+
+    .pend__link--next {
+      text-align: left;
     }
   }
 </style>

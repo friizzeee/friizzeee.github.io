@@ -1,43 +1,70 @@
 ---
+/**
+ * Page Contact : Discord d'abord, le déroulé d'une commande, puis les tarifs (avec l'encadré de sécurité).
+ * Textes : src/data/process.ts (étapes, modèle de message), src/data/services.ts (prestations),
+ * src/config/site.ts (Discord, e-mail), src/config/payment.ts (tarifs).
+ */
 import BaseLayout from '../layouts/BaseLayout.astro';
+import { site, discordHref, isDiscordConfigured } from '../config/site';
 import { services } from '../data/services';
-import DiscordCard from '../components/contact/DiscordCard.astro';
-import OrderSteps from '../components/contact/OrderSteps.astro';
-import Packages from '../components/home/Packages.astro';
-import TrackLabel from '../components/ui/TrackLabel.astro';
-import DiscordButton from '../components/ui/DiscordButton.astro';
-import Button from '../components/ui/Button.astro';
+import { orderSteps, briefTemplate } from '../data/process';
+import { pad } from '../lib/portfolio';
+import DiscordProfileCard from '../components/ui/DiscordProfileCard.astro';
+import Rates from '../components/home/Rates.astro';
+import Icon from '../components/ui/Icon.astro';
+
+const external = isDiscordConfigured ? { target: '_blank', rel: 'noopener noreferrer' } : {};
 ---
 
 <BaseLayout
   title="Contact"
   description="Contactez nether sur Discord pour le montage de vos vidéos YouTube, TikTok ou Reels. Paiement en une fois ou en fin de mois, via Apa."
 >
-  <section id="contact" class="c-hero" data-chapter="Contact" data-hero-root>
-    <div class="c-hero__bg" aria-hidden="true"></div>
-    <div class="wrap c-hero__grid">
-      <div class="c-hero__intro">
-        <p class="c-hero__eyebrow mono" data-hero>
-          <span class="rec-dot" aria-hidden="true"></span>Contact · réponse sur Discord
-        </p>
-        <h1 class="c-hero__title h-display" data-hero aria-label="Parlons de votre prochaine vidéo.">
-          <span class="c-line" aria-hidden="true"><span data-hero-line>Parlons de votre</span></span>
-          <span class="c-line" aria-hidden="true"><span data-hero-line><em class="serif">prochaine vidéo.</em></span></span>
-        </h1>
-        <p class="lead" data-hero>
+  <section class="ct" aria-labelledby="ct-title">
+    <div class="wrap ct__grid">
+      <div class="ct__main">
+        <p class="label">Contact · réponse sur Discord</p>
+        <h1 class="ct__title" id="ct-title">Parlons de votre <span class="script">prochaine vidéo.</span></h1>
+        <p class="lede muted">
           Monteur vidéo freelance pour créateurs YouTube, TikTok et Instagram, avec une spécialité : les vidéos
           longues de 10 minutes et plus.
         </p>
 
-        <div class="c-services" data-hero>
-          <p class="mono c-services__title">Prestations</p>
+        <div class="ct__discord">
+          <h2 class="ct__h2">Me contacter sur Discord</h2>
+          <p class="muted">
+            Envoyez-moi un message avec quelques infos sur votre projet. On échange, on cale les détails, et je
+            m’occupe du reste.
+          </p>
+          <div class="ct__actions">
+            <a class="pill pill--solid pill--lg" href={discordHref} {...external} data-discord-link>
+              <Icon name="discord" />
+              Envoyer un message
+              <span class="sr-only">(nouvel onglet)</span>
+            </a>
+            {
+              site.discord.handle && (
+                <button type="button" class="pill pill--lg" data-copy={site.discord.handle} aria-label={`Pseudo : ${site.discord.handle}, copier le pseudo Discord`}>
+                  <Icon name="copy" />
+                  <span data-copy-label>Pseudo : {site.discord.handle}</span>
+                </button>
+              )
+            }
+          </div>
+          <p class="ct__mail">
+            Ou par e-mail : <a href={`mailto:${site.email}`}>{site.email}</a>
+          </p>
+        </div>
+
+        <div class="ct__services">
+          <p class="label">Prestations</p>
           <ul>
             {
               services.map((s) => (
                 <li>
-                  <span class="c-services__name">{s.title}</span>
-                  <span class="mono c-services__format">{s.format}</span>
-                  {s.featured && <span class="c-services__badge mono">Spécialité</span>}
+                  <span class="ct__service">{s.title}</span>
+                  <span class="label">{s.format}</span>
+                  {s.featured && <span class="ct__badge">Spécialité</span>}
                 </li>
               ))
             }
@@ -45,158 +72,273 @@ import Button from '../components/ui/Button.astro';
         </div>
       </div>
 
-      <DiscordCard />
+      <div class="ct__side">
+        <DiscordProfileCard />
+        <div class="ct__brief">
+          <div class="ct__brief-head">
+            <p class="label">Modèle de premier message</p>
+            <button type="button" class="pill" data-copy data-copy-from="#brief-template">
+              <Icon name="copy" />
+              <span data-copy-label>Copier</span>
+            </button>
+          </div>
+          <pre id="brief-template">{briefTemplate}</pre>
+        </div>
+      </div>
     </div>
   </section>
 
-  <OrderSteps />
-  <Packages id="paiement" chapter="Paiement" track="A1" index="03" withSafety />
+  <section class="order" aria-labelledby="order-title">
+    <div class="wrap">
+      <p class="label">Commande</p>
+      <h2 class="h-title" id="order-title">Comment se passe une commande.</h2>
+      <p class="lede muted order__lead">
+        Pas de formulaire ni de paiement d’avance : tout se règle en discutant, et vous payez une fois la vidéo
+        livrée.
+      </p>
+      <ol class="order__list">
+        {
+          orderSteps.map((step, i) => (
+            <li class:list={['order__step', step.note && 'order__step--note']}>
+              <span class="order__num num">{pad(i + 1)}</span>
+              <h3>{step.title}</h3>
+              <p class="muted">{step.text}</p>
+              {step.note && <span class="order__note label">{step.note}</span>}
+            </li>
+          ))
+        }
+      </ol>
+    </div>
+  </section>
 
-  <section class="c-end" data-chapter="À bientôt">
-    <div class="wrap c-end__inner">
-      <TrackLabel track="REC" index="04" label="Fin" />
-      <h2 class="c-end__text" data-reveal="lines">
-        Une question avant de vous lancer&nbsp;? <span class="serif">Écrivez-moi, simplement.</span>
-      </h2>
-      <div class="c-end__actions" data-reveal="fade" data-scrubber-avoid>
-        <DiscordButton />
-        <Button href="/portfolio">Revoir le portfolio</Button>
+  <Rates id="paiement" withSafety />
+
+  <section class="ct-end" aria-labelledby="ct-end-title">
+    <div class="wrap ct-end__inner">
+      <h2 class="h-title" id="ct-end-title">Une question avant de vous lancer ? <span class="script">Écrivez-moi, simplement.</span></h2>
+      <div class="ct__actions">
+        <a class="pill pill--solid pill--lg" href={discordHref} {...external}>
+          <Icon name="discord" />
+          Me contacter sur Discord
+        </a>
+        <a class="pill pill--lg" href="/portfolio">Revoir les réalisations</a>
       </div>
     </div>
   </section>
 </BaseLayout>
 
 <style>
-  .c-hero {
-    position: relative;
-    isolation: isolate;
-    padding-top: calc(var(--header-h) + clamp(3rem, 8vw, 6rem));
-    padding-bottom: clamp(5rem, 10vw, 8rem);
-    overflow: hidden;
-  }
-
-  .c-hero__bg {
-    position: absolute;
-    inset: 0;
-    z-index: -1;
+  .ct {
+    padding-top: calc(var(--header-h) + clamp(3rem, 7vw, 5.5rem));
+    padding-bottom: clamp(4rem, 8vw, 6rem);
     background:
-      radial-gradient(ellipse 50% 45% at 85% 20%, rgb(229 22 42 / 0.16), transparent),
-      linear-gradient(90deg, rgb(255 255 255 / 0.03) 1px, transparent 1px) 0 0 / calc(100% / 12) 100%;
-    -webkit-mask-image: linear-gradient(180deg, #000 60%, transparent);
-    mask-image: linear-gradient(180deg, #000 60%, transparent);
+      radial-gradient(ellipse 55% 45% at 80% 30%, rgb(255 138 61 / 0.1), transparent 70%),
+      var(--night);
   }
 
-  .c-hero__grid {
+  .ct__grid {
     display: grid;
-    gap: clamp(3rem, 6vw, 5rem);
+    grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+    gap: clamp(3rem, 6vw, 6rem);
   }
 
-  @media (min-width: 64rem) {
-    .c-hero__grid {
-      grid-template-columns: 1.1fr 1fr;
-      align-items: start;
-    }
-  }
-
-  .c-hero__intro {
+  .ct__main {
     display: grid;
-    gap: 1.75rem;
+    gap: 1.5rem;
     align-content: start;
   }
 
-  .c-hero__eyebrow {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.6rem;
-    color: var(--color-fog-400);
+  .ct__title {
+    font-size: clamp(2.8rem, 6.5vw, 5.8rem);
+    font-weight: 820;
+    font-stretch: 122%;
+    letter-spacing: -0.04em;
+    line-height: 0.95;
+    text-wrap: balance;
   }
 
-  .c-hero__title {
-    font-size: clamp(2.8rem, 5.4vw, 6rem);
+  .ct__title .script,
+  .ct-end .script {
+    font-size: 1.2em;
+    font-weight: 400;
+    color: var(--tungsten);
   }
 
-  .c-line {
-    display: block;
-    overflow: hidden;
-    padding: 0.02em 0.1em 0.1em;
-    margin: -0.02em -0.1em -0.1em;
-  }
-
-  .c-line > span {
-    display: block;
-  }
-
-  .c-services {
-    margin-top: 1rem;
-    border-top: 1px solid var(--line);
-  }
-
-  .c-services__title {
-    padding-block: 1rem 0.5rem;
-    color: var(--color-fog-400);
-    font-size: 0.6rem;
-  }
-
-  .c-services ul {
+  .ct__discord {
     display: grid;
+    gap: 0.9rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--hair-strong);
   }
 
-  .c-services li {
+  .ct__h2 {
+    font-size: clamp(1.4rem, 2vw, 1.75rem);
+    font-weight: 740;
+    font-stretch: 112%;
+  }
+
+  .ct__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+  }
+
+  .ct__actions :global(svg) {
+    width: 1.05rem;
+    height: 1.05rem;
+  }
+
+  .ct__mail {
+    color: var(--fog);
+  }
+
+  .ct__mail a {
+    color: var(--cream);
+    text-decoration: underline;
+    text-decoration-color: var(--hair-strong);
+    text-underline-offset: 0.3em;
+  }
+
+  .ct__services ul {
+    margin: 0.75rem 0 0;
+    padding: 0;
+    list-style: none;
+    border-top: 1px solid var(--hair);
+  }
+
+  .ct__services li {
     display: flex;
     flex-wrap: wrap;
     align-items: baseline;
     gap: 0.4rem 1rem;
-    padding-block: 0.95rem;
-    border-bottom: 1px solid var(--line);
+    padding-block: 0.9rem;
+    border-bottom: 1px solid var(--hair);
   }
 
-  .c-services__name {
+  .ct__service {
     flex: 1;
     min-width: 12rem;
     font-size: 1.1rem;
-    font-weight: 500;
-    letter-spacing: -0.015em;
+    font-weight: 600;
   }
 
-  .c-services__format {
-    color: var(--color-fog-400);
-    font-size: 0.6rem;
-  }
-
-  .c-services__badge {
-    padding: 0.25rem 0.55rem;
+  .ct__badge {
+    padding: 0.2rem 0.55rem;
     border-radius: 999px;
-    background: rgb(229 22 42 / 0.14);
-    color: var(--color-rec-bright);
-    font-size: 0.55rem;
+    background: var(--cream);
+    color: var(--night);
+    font-size: 0.7rem;
+    font-weight: 650;
   }
 
-  .c-end {
-    padding-block: clamp(5rem, 10vw, 9rem) clamp(4rem, 8vw, 6rem);
-    border-top: 1px solid var(--line);
-  }
-
-  .c-end__inner {
+  .ct__side {
     display: grid;
-    gap: 2rem;
+    gap: 1.5rem;
+    justify-items: center;
+    align-content: start;
   }
 
-  .c-end__text {
-    max-width: 18ch;
-    font-size: clamp(2.2rem, 5vw, 4.5rem);
-    font-weight: 560;
-    letter-spacing: -0.045em;
+  .ct__brief {
+    width: 100%;
+    max-width: 24rem;
+    padding: 1.1rem 1.2rem;
+    border: 1px solid var(--hair);
+    border-radius: var(--radius-md);
+    background: var(--night-2);
+  }
+
+  .ct__brief-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+  }
+
+  .ct__brief-head .pill {
+    min-height: 2.25rem;
+  }
+
+  .ct__brief pre {
+    margin-top: 0.8rem;
+    color: var(--fog);
+    font-family: var(--font);
+    font-size: 0.85rem;
+    line-height: 1.6;
+    white-space: pre-wrap;
+  }
+
+  .order {
+    padding-block: clamp(4rem, 8vw, 7rem);
+    border-top: 1px solid var(--hair);
+  }
+
+  .order__lead {
+    margin-top: 1rem;
+    max-width: 40rem;
+  }
+
+  .order__list {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 1.25rem;
+    margin: clamp(2.5rem, 5vw, 4rem) 0 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .order__step {
+    display: grid;
+    gap: 0.6rem;
+    align-content: start;
+    padding-top: 1.2rem;
+    border-top: 2px solid var(--hair-strong);
+  }
+
+  .order__step--note {
+    border-top-color: var(--tungsten);
+  }
+
+  .order__num {
+    font-size: 2.2rem;
+    font-weight: 840;
+    font-stretch: 125%;
     line-height: 1;
   }
 
-  .c-end__text .serif {
-    color: var(--color-fog-300);
+  .order__step h3 {
+    font-size: 1.1rem;
+    font-weight: 700;
+    font-stretch: 110%;
   }
 
-  .c-end__actions {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: flex-start;
-    gap: 0.85rem;
+  .order__note {
+    color: var(--tungsten);
+  }
+
+  .ct-end {
+    padding-block: clamp(4rem, 8vw, 6rem);
+  }
+
+  .ct-end__inner {
+    display: grid;
+    gap: 1.75rem;
+  }
+
+  @media (max-width: 64rem) {
+    .order__list {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  @media (max-width: 56rem) {
+    .ct__grid {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  @media (max-width: 30rem) {
+    .order__list {
+      grid-template-columns: 1fr;
+    }
   }
 </style>

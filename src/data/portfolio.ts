@@ -25,6 +25,14 @@ import vrFinale from '../assets/portfolio/victoire-royale-finale.jpg';
 import martyPart1 from '../assets/portfolio/marty-best-of-v5-partie1.jpg';
 import martyPart2 from '../assets/portfolio/marty-best-of-v5-partie2.jpg';
 import martyPart3 from '../assets/portfolio/marty-best-of-v5-partie3.jpg';
+import shortNvidia from '../assets/portfolio/marty-short-nvidia.jpg';
+import short55k from '../assets/portfolio/marty-short-55k.jpg';
+import goldenPart1 from '../assets/portfolio/golden-boy-best-of-partie1.jpg';
+import goldenPart2 from '../assets/portfolio/golden-boy-best-of-partie2.jpg';
+import goldenReconnait from '../assets/portfolio/golden-boy-short-reconnait.jpg';
+import goldenChat from '../assets/portfolio/golden-boy-short-chat.jpg';
+import goldenVoiture from '../assets/portfolio/golden-boy-short-voiture.jpg';
+import { coulisses } from './coulisses';
 
 /**
  * ── 1. CATÉGORIES ────────────────────────────────────────────
@@ -36,6 +44,7 @@ import martyPart3 from '../assets/portfolio/marty-best-of-v5-partie3.jpg';
 export const categories = {
   'crypto-trading': { label: 'Crypto & Trading' },
   gaming: { label: 'Gaming' },
+  divertissement: { label: 'Divertissement & clashs' },
   'long-format': { label: 'YouTube long format' },
   'format-court': { label: 'Formats courts' },
   business: { label: 'Business & entrepreneuriat' },
@@ -256,6 +265,7 @@ export const projects: ProjectEntry[] = [
     videos: [
       {
         file: '/videos/victoire-royale-finale.mp4',
+        fileLight: '/videos/victoire-royale-finale-720p.mp4',
         poster: vrFinale,
         title: 'Victoire Royale couronnée',
         duration: '0:41',
@@ -263,6 +273,194 @@ export const projects: ProjectEntry[] = [
         playLabel: 'Voir le final · 0:41',
         credits:
           'Musiques : « Bit Shift », « Volatile Reaction », « Run Amok », « Fluffing a Duck » — Kevin MacLeod (incompetech.com), licence CC BY 4.0.',
+      },
+    ],
+  },
+
+  {
+    slug: 'marty-shorts',
+    title: 'Marty, *en 9:16*',
+    creator: 'Marty',
+    subtitle: 'Extraits de « BITCOIN : le bottom du bear market à 55 000 $ ? »',
+    categories: ['format-court', 'crypto-trading'],
+    editType: 'Extraits verticaux',
+    platform: 'TikTok, Reels, Shorts',
+    format: '9:16',
+    date: '2026-11',
+    description:
+      'Une analyse de 10 min 37 sur Bitcoin. Deux extraits verticaux de 38 et 30 secondes, qui se comprennent sans avoir vu la vidéo.',
+    context: [
+      'Marty publie des analyses de Bitcoin montées : le graphique en plein écran, sa webcam dans un coin. J’ai cherché dans sa vidéo de 10 min 37 les passages qui tiennent seuls : un nom connu, un chiffre, une chute.',
+      'Le premier extrait garde un seul passage, de bout en bout. Le second remet trois passages de la vidéo dans l’ordre d’une histoire : la question, la menace, le plan, l’espoir. Il s’arrête sur « jackpot », juste avant une phrase qui aurait sonné comme un conseil financier.',
+    ],
+    poster: shortNvidia,
+    /* Chiffres du dossier de montage (video_bottom_55k/LISEZMOI.md et CHOIX_DES_EXTRAITS.md). */
+    facts: [
+      { value: '10:37', label: 'd’analyse en source' },
+      { value: '2', label: 'extraits verticaux' },
+      { value: '38 s · 30 s', label: 'durée des extraits' },
+      { value: '1', label: 'pop-up par extrait' },
+    ],
+    work: [
+      {
+        type: 'selection',
+        detail: 'Chaque passage noté sur une grille (accroche, compris sans contexte, émotion, chiffre, chute) : les deux meilleurs sont montés, trois autres restent en réserve.',
+      },
+      { type: 'structure', detail: 'Extrait 2 : trois passages remis dans l’ordre d’une histoire, toujours en phrases entières.' },
+      { type: 'zooms', detail: 'La webcam suit les zooms que Marty fait dans sa vidéo ; un zoom lent sur son visage pour la phrase finale.' },
+      { type: 'habillage', detail: 'Un seul pop-up par extrait : le logo Nvidia puis « +30 % », et « 54 000 $ ou 46 000 $ ? ».' },
+      { type: 'sousTitres', detail: 'Deux séries de sous-titres par extrait : sur l’accroche et sur la chute.' },
+      {
+        type: 'musique',
+        detail: 'Un beat par extrait, coupé juste avant les phrases clés. Mix mesuré à −14,6 et −14,9 LUFS, la voix environ 17 dB au-dessus de la musique.',
+      },
+    ],
+    videos: [
+      {
+        file: '/videos/marty-short-nvidia.mp4',
+        preview: '/videos/plan-short-nvidia.mp4',
+        poster: shortNvidia,
+        title: 'Nvidia fait +30 %… et Bitcoin ne bouge pas',
+        duration: '0:38',
+        description: 'Un paradoxe qu’on comprend sans rien savoir de la vidéo, et une chute : « le plus important, c’est l’analyse technique ».',
+        credits: 'Musique : « Old School Hip Hop Beat - De Boom Bap Callejero » (Pixabay).',
+      },
+      {
+        file: '/videos/marty-short-55k.mp4',
+        preview: '/videos/plan-short-55k.mp4',
+        poster: short55k,
+        title: '55 000 $ : le bottom ou un plus gros crash ?',
+        duration: '0:30',
+        description: 'La question, la menace, le plan, l’espoir : trois passages remis en ordre, jusqu’à « jackpot ».',
+        credits: 'Musique : « Hip Hop Instrumental » (Pixabay).',
+      },
+    ],
+  },
+
+  {
+    slug: 'golden-boy-best-of',
+    title: 'Golden Boy, *le Best Of*',
+    creator: 'Golden Boy',
+    subtitle: 'Live du 24 novembre 2026 · OmeTV',
+    categories: ['divertissement', 'long-format'],
+    editType: 'Best Of de live',
+    platform: 'YouTube',
+    date: '2026-11',
+    duration: '14:43',
+    description:
+      'Une session OmeTV d’1 h 33, en plein live, condensée en un Best Of de 14 min 43 qui garde le style de sa chaîne.',
+    context: [
+      'Golden Boy fait des micro-trottoirs de confrontation, et des lives. Le 24 novembre, il passe 1 h 33 sur OmeTV à discuter avec des inconnus tirés au hasard. J’en ai tiré un Best Of de 14 min 43 en reprenant la grammaire de ses propres vidéos de lives : l’écran du live tel quel, des coupes sèches, quelques gros plans, ni chapitre ni carton.',
+      'Le montage suit l’ordre du live, sauf l’accroche. Aucun mineur à l’image : quand un inconnu douteux passe dans la fenêtre, le plan est recadré sur Golden Boy seul. Sur le site, la vidéo est hébergée en deux parties.',
+    ],
+    poster: goldenPart1,
+    featured: true,
+    /* Chiffres du compte rendu du montage (GOLDENBOY_BEST_OF_LIVE_24NOV/COMPTE_RENDU.md, version V3). */
+    facts: [
+      { value: '1 h 33', label: 'de session OmeTV' },
+      { value: '14:43', label: 'de Best Of' },
+      { value: '76', label: 'coupes, toutes dans un silence' },
+      { value: '22', label: 'zooms sur les répliques' },
+    ],
+    work: [
+      { type: 'selection', detail: 'Les meilleurs échanges d’une session d’1 h 33, dans l’ordre du live, avec l’accroche en tête.' },
+      { type: 'nettoyage', detail: 'Les blancs et les passages trop risqués pour YouTube sont retirés ; aucun mineur à l’image.' },
+      { type: 'rythme', detail: '76 coupes sèches, chacune posée dans un silence mesuré : les phrases restent entières.' },
+      { type: 'zooms', detail: '22 zooms rapides vers le visage au moment d’une réplique, puis retour sec au plan large.' },
+      {
+        type: 'sousTitres',
+        detail: '15 répliques sous-titrées, en blanc et en majuscules, au plus quatre mots à la fois, au fil de la parole.',
+      },
+      {
+        type: 'musique',
+        detail: 'Sur les clashs seulement : le morceau entre sur son drop juste après la réplique, joue fort sur la réaction, puis s’arrête avant la chute suivante. Mix à −14,4 LUFS.',
+      },
+    ],
+    videos: [
+      {
+        file: '/videos/golden-boy-best-of-partie1.mp4',
+        fileLight: '/videos/golden-boy-best-of-partie1-480p.mp4',
+        preview: '/videos/golden-boy-best-of-partie1-preview.mp4',
+        poster: goldenPart1,
+        title: 'Golden Boy, le Best Of — partie 1',
+        duration: '7:01',
+        description:
+          'L’accroche, la bande « facho », le faux animateur radio, un fan, McDo, puis l’inconnu « qui cherche des femmes » : le cœur de la vidéo.',
+        credits:
+          'Musiques : « hiphop instrumental » (Portmore, Pixabay), « Murder In My Mind » (Kordhell), « Sneaky Snitch » — Kevin MacLeod (incompetech.com), licence CC BY 4.0, « Sahara » (Hensonn), « Clair de lune » (Debussy).',
+      },
+      {
+        file: '/videos/golden-boy-best-of-partie2.mp4',
+        fileLight: '/videos/golden-boy-best-of-partie2-480p.mp4',
+        preview: '/videos/golden-boy-best-of-partie2-preview.mp4',
+        poster: goldenPart2,
+        title: 'Golden Boy, le Best Of — partie 2',
+        duration: '7:42',
+        description: '« Le mec qui tape les gays », l’« influenceur » à 4 viewers, le « président », la voiture, puis le ban d’OmeTV.',
+        credits:
+          'Musiques : « Metamorphosis » (INTERWORLD), « Sad Violin », « Dior », instrumental (Pop Smoke, prod. 808Melo), « hiphop instrumental » (Portmore, Pixabay), « Jazzy Beat » (Kulakovka, Pixabay), « Frolic » (Luciano Michelini).',
+      },
+    ],
+  },
+
+  {
+    slug: 'golden-boy-shorts',
+    title: 'Golden Boy, *en 9:16*',
+    creator: 'Golden Boy',
+    subtitle: 'Extraits du live OmeTV du 24 novembre 2026',
+    categories: ['format-court', 'divertissement'],
+    editType: 'Extraits verticaux',
+    platform: 'TikTok, Reels, Shorts',
+    format: '9:16',
+    date: '2026-11',
+    description:
+      'Trois extraits verticaux du même live : l’inconnu qui croit le reconnaître, les messages du chat, deux gars qui l’insultent depuis leur voiture.',
+    context: [
+      'Dans le live, j’ai cherché les passages qui tiennent seuls, sans contexte : une confrontation, une question qui met mal à l’aise, une chute. Golden Boy reste calme face à des inconnus qui s’emballent : c’est ce contraste qui fait ses vidéos.',
+      'Chaque extrait commence en plein échange, sans intro. Dans celui du chat, chaque message s’affiche à l’écran avant sa réponse, pour qu’on suive sans avoir vu le live.',
+    ],
+    poster: goldenReconnait,
+    /* Chiffres du dossier de montage (short_montage/live_goldenboy_24nov/LISEZMOI.md). */
+    facts: [
+      { value: '3', label: 'extraits verticaux' },
+      { value: '1:06 · 0:47 · 1:06', label: 'durée des extraits' },
+      { value: '1', label: 'morceau par extrait' },
+    ],
+    work: [
+      { type: 'selection', detail: 'Les passages qui tiennent seuls : une confrontation, une question du chat, une chute.' },
+      { type: 'structure', detail: 'Chaque extrait s’ouvre sur la phrase la plus tendue et se ferme sèchement, sur une réplique.' },
+      { type: 'habillage', detail: 'Un titre en bandeau blanc ; dans l’extrait du chat, chaque message s’affiche avant la réponse.' },
+      { type: 'effets', detail: 'Fin de l’extrait du chat : sa webcam, simple vignette dans le live, agrandie par IA pour passer en plein écran.' },
+      { type: 'sousTitres', detail: 'Mot à mot, en jaune et en majuscules.' },
+      { type: 'musique', detail: 'Un seul morceau par extrait, bas sous la voix, coupé net juste avant chaque grosse réplique.' },
+    ],
+    videos: [
+      {
+        file: '/videos/golden-boy-short-reconnait.mp4',
+        preview: '/videos/plan-gb-short-reconnait.mp4',
+        poster: goldenReconnait,
+        title: 'Il croit me reconnaître sur OmeTV',
+        duration: '1:06',
+        description: '« C’est pas toi qui vas dans la rue insulter les gays ? » L’inconnu mène l’enquête, Golden Boy reste calme.',
+        credits: 'Musique : « Dreamy » (TrapoloskiBeatz).',
+      },
+      {
+        file: '/videos/golden-boy-short-chat.mp4',
+        preview: '/videos/plan-gb-short-chat.mp4',
+        poster: goldenChat,
+        title: 'Mon chat dit : « 99 % physique »',
+        duration: '0:47',
+        description: 'Il lit les messages du chat à voix haute et les recadre, un par un.',
+        credits: 'Musique : « Rapture » (INTERWORLD).',
+      },
+      {
+        file: '/videos/golden-boy-short-voiture.mp4',
+        preview: '/videos/plan-gb-short-voiture.mp4',
+        poster: goldenVoiture,
+        title: 'Ils m’insultent depuis leur voiture',
+        duration: '1:06',
+        description: '« T’as mis le bonnet de ta sœur ou quoi ? », jusqu’à « 3 500 € par mois, je remplis 4 fois ton frigo ».',
+        credits: 'Musique : « No Limit » (NSM Beats).',
       },
     ],
   },
@@ -293,42 +491,35 @@ export const projects: ProjectEntry[] = [
 
 /**
  * ── 4. BEHIND THE EDIT ───────────────────────────────────────
- * L'emplacement réservé à la vidéo qui montrera les coulisses du montage.
- * Tant que `videos` est vide, la page Portfolio affiche un emplacement « en préparation »
- * avec la phrase `teaser`, et rien d'autre : aucun faux contenu.
- *
- * Le jour où la vidéo est prête, remplissez les champs ci-dessous (ce sont les mêmes que
- * pour un projet) : l'emplacement devient une vraie présentation et la page
- * /portfolio/behind-the-edit est créée automatiquement.
+ * La page des coulisses (/portfolio/behind-the-edit) : le film de démonstration FilmCraft.
+ * Tout vient de src/data/coulisses.ts (vidéos, chapitres, crédit musique) : modifiez-le là-bas.
+ * Si `videos` est vidé, la page disparaît et `teaser` s'affiche à la place, sans faux contenu.
  */
+const clock = (s: number): string => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
+
 export const behindTheEdit: ProjectEntry & { teaser: string } = {
   slug: 'behind-the-edit',
   title: 'Behind *the Edit*',
+  subtitle: 'Trois montages repris à la timeline, dans FilmCraft',
   editType: 'Coulisses du montage',
   teaser: 'Une vidéo est en préparation : les coulisses d’un montage, de l’analyse des rushs à la livraison.',
-
-  // poster: maMiniature,                          ← la miniature
-  // description: '…',                             ← la description
-  // duration: '8:00',
+  description:
+    '42 secondes dans FilmCraft : Victoire Royale, un but de Rocket League et le best-of de Marty, repris à la timeline. Coupes, étalonnage, ralenti, titres et sous-titres, puis le résultat.',
+  poster: coulisses.poster,
+  duration: '0:42',
   videos: [
-    // { file: '/videos/behind-the-edit.mp4', preview: '/videos/behind-the-edit-preview.mp4' },   ← la vidéo
+    {
+      file: coulisses.file,
+      fileLight: coulisses.fileLight,
+      preview: '/videos/plan-coulisses.mp4',
+      poster: coulisses.poster,
+      title: coulisses.title,
+      playLabel: 'Regarder avec le son',
+      duration: '0:42',
+      chapters: coulisses.chapters.map((c) => ({ time: clock(c.start), seconds: c.start, label: c.label })),
+      credits: coulisses.credits,
+    },
   ],
-  tools: [
-    // 'Nom de l’outil',                           ← les outils utilisés
-  ],
-  process: [
-    // { title: 'Nom de l’étape', text: 'Ce qu’on voit dans la vidéo à ce moment-là.' },          ← les étapes
-  ],
+  tools: ['FilmCraft'],
+  process: coulisses.chapters.filter((c) => c.num).map((c) => ({ title: c.label, text: c.text })),
 };
-
-/**
- * ── 5. EMPLACEMENTS « À VENIR » ──────────────────────────────
- * Affichés sous la galerie tant qu'elle compte moins de 6 projets.
- * Supprimez une ligne dès qu'un vrai projet du même type est en ligne,
- * ou videz le tableau pour tout masquer.
- */
-export const upcomingSlots: { format: '16:9' | '9:16'; label: string }[] = [
-  { format: '16:9', label: 'Long format · YouTube' },
-  { format: '9:16', label: 'TikTok' },
-  { format: '9:16', label: 'Reels Instagram' },
-];

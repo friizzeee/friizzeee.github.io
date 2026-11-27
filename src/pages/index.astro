@@ -1,24 +1,23 @@
 ---
+/**
+ * Accueil, dans l'ordre du « plan-séquence » :
+ *  la salle de montage puis les réalisations (un seul plan), les formats, la méthode,
+ *  qui monte et les tarifs (sur papier), puis « Coupez. » pour me contacter.
+ */
 import BaseLayout from '../layouts/BaseLayout.astro';
-import Hero from '../components/home/Hero.astro';
-import Universes from '../components/home/Universes.astro';
-import Services from '../components/home/Services.astro';
-import Portfolio from '../components/home/Portfolio.astro';
-import Coulisses from '../components/home/Coulisses.astro';
+import Take from '../components/home/Take.astro';
+import Formats from '../components/home/Formats.astro';
+import Method from '../components/home/Method.astro';
 import About from '../components/home/About.astro';
-import Process from '../components/home/Process.astro';
-import Packages from '../components/home/Packages.astro';
-import FinalCta from '../components/home/FinalCta.astro';
+import Rates from '../components/home/Rates.astro';
+import Contact from '../components/home/Contact.astro';
 ---
 
 <BaseLayout>
-  <Hero />
-  <Universes />
-  <Services />
-  <Portfolio />
-  <Coulisses />
+  <Take />
+  <Formats />
+  <Method />
   <About />
-  <Process />
-  <Packages />
-  <FinalCta />
+  <Rates />
+  <Contact />
 </BaseLayout>

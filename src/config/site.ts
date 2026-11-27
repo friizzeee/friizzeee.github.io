@@ -34,13 +34,6 @@ export const site = {
     label: 'Ouvert aux nouveaux projets',
   },
 
-  /**
-   * Titre principal de la page d'accueil, une ligne par entrée.
-   * Entourez un passage d'astérisques pour le passer en italique serif : *Watch time*
-   * Le point final de la dernière ligne devient le point rouge « REC ».
-   */
-  heroTitle: ['Raw footage in.', '*Watch time* out.'],
-
   /** Sous-titre du hero, sous le grand titre. */
   heroLead:
     'Monteur vidéo pour créateurs YouTube, TikTok et Instagram. Ma spécialité : les vidéos longues de 10 minutes et plus, montées pour que le public reste jusqu’au bout.',

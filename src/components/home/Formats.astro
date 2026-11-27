@@ -1,0 +1,297 @@
+---
+/**
+ * Accueil : les formats que je monte, chacun dans un cadre à son vrai format (16:9, 9:16),
+ * avec un vrai extrait qui tourne quand le cadre est à l'écran (works.ts, jamais en « animations réduites »).
+ * Textes : src/data/services.ts. Les boucles sont celles du plan-séquence (déjà en cache).
+ */
+import { getImage } from 'astro:assets';
+import { services, universes } from '../../data/services';
+import { categoryHref, projectsIn } from '../../lib/portfolio';
+import Icon from '../ui/Icon.astro';
+import martyLoop from '../../assets/take/plan-marty.jpg';
+import nvidiaLoop from '../../assets/take/plan-short-nvidia.jpg';
+import bottomLoop from '../../assets/take/plan-short-55k.jpg';
+
+/** Quel extrait réel illustre quel service. */
+const loops = {
+  youtube: { src: '/videos/plan-marty.mp4', poster: martyLoop, ratio: '16:9', caption: 'Marty, le Best Of' },
+  tiktok: { src: '/videos/plan-short-nvidia.mp4', poster: nvidiaLoop, ratio: '9:16', caption: 'Marty, extrait 1' },
+  reels: { src: '/videos/plan-short-55k.mp4', poster: bottomLoop, ratio: '9:16', caption: 'Marty, extrait 2' },
+} as const;
+
+const items = await Promise.all(
+  services.map(async (s) => {
+    const loop = loops[s.id as keyof typeof loops];
+    const poster = loop ? (await getImage({ src: loop.poster, width: loop.ratio === '16:9' ? 1280 : 540, format: 'webp', quality: 76 })).src : undefined;
+    const examples = s.examples && projectsIn(s.examples).length > 0 ? categoryHref(s.examples) : null;
+    return { ...s, loop, poster, examples };
+  }),
+);
+---
+
+<section id="formats" class="fmt" data-spy="top" aria-labelledby="fmt-title">
+  <div class="wrap">
+    <header class="fmt__head">
+      <p class="label" data-reveal>Formats</p>
+      <h2 class="h-title" id="fmt-title" data-reveal>Un montage pensé pour chaque format.</h2>
+      <p class="lede muted" data-reveal data-reveal-delay="0.08">
+        Du long format YouTube aux vidéos verticales, chaque plateforme a son rythme. Ma spécialité : les vidéos de
+        10 minutes et plus, où chaque seconde doit donner envie de regarder la suivante.
+      </p>
+    </header>
+
+    <div class="fmt__grid">
+      {
+        items.map((s) => (
+          <article class:list={['fmt__item', s.loop?.ratio === '16:9' ? 'fmt__item--wide' : 'fmt__item--tall']}>
+            <div class="fmt__frame">
+              {s.loop && (
+                <video
+                  muted
+                  loop
+                  playsinline
+                  preload="none"
+                  poster={s.poster}
+                  data-src={s.loop.src}
+                  data-inview-loop
+                  aria-hidden="true"
+                />
+              )}
+              <span class="fmt__ratio label">{s.loop?.ratio}</span>
+              {s.loop && <span class="fmt__caption">{s.loop.caption}</span>}
+            </div>
+            <div class="fmt__text">
+              <p class="label fmt__spec">
+                {s.format}
+                {s.featured && <span class="fmt__badge">Spécialité</span>}
+              </p>
+              <h3 class="fmt__title">{s.title}</h3>
+              <p class="fmt__desc">{s.description}</p>
+              {s.points.length > 0 && (
+                <ul class="fmt__points">
+                  {s.points.map((p) => (
+                    <li>{p}</li>
+                  ))}
+                </ul>
+              )}
+              <p class="fmt__tags">{s.tags.join(' · ')}</p>
+              <p class="fmt__links">
+                {s.examples && (
+                  <a href={s.examples}>
+                    Voir les montages <Icon name="arrow" />
+                  </a>
+                )}
+                <a href="/#tarifs">
+                  Voir les tarifs <Icon name="arrow" />
+                </a>
+              </p>
+            </div>
+          </article>
+        ))
+      }
+    </div>
+
+    <p class="fmt__universes">
+      <span class="label">Des univers différents, la même exigence</span>
+      <span class="fmt__universe-list">{universes.join(' · ')}</span>
+    </p>
+  </div>
+</section>
+
+<style>
+  .fmt {
+    padding-block: clamp(5rem, 11vw, 9rem);
+    background: var(--night);
+  }
+
+  .fmt__head {
+    display: grid;
+    grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+    gap: 1.1rem clamp(2rem, 5vw, 5rem);
+    align-items: end;
+  }
+
+  .fmt__head .label {
+    grid-column: 1 / -1;
+  }
+
+  @media (max-width: 56rem) {
+    .fmt__head {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .fmt__grid {
+    display: grid;
+    grid-template-columns: minmax(0, 58fr) minmax(0, 19fr) minmax(0, 19fr);
+    gap: clamp(1rem, 2.2vw, 2rem);
+    align-items: start;
+    margin-top: clamp(3rem, 6vw, 5rem);
+  }
+
+  .fmt__frame {
+    position: relative;
+    overflow: hidden;
+    border-radius: var(--radius-md);
+    background: var(--night-2);
+    box-shadow: 0 0 0 1px var(--hair);
+  }
+
+  .fmt__item--wide .fmt__frame {
+    aspect-ratio: 16 / 9;
+  }
+
+  .fmt__item--tall .fmt__frame {
+    aspect-ratio: 9 / 16;
+  }
+
+  .fmt__frame video {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .fmt__ratio {
+    position: absolute;
+    top: 0.7rem;
+    left: 0.7rem;
+    padding: 0.3rem 0.55rem;
+    border-radius: 999px;
+    background: var(--glass);
+    color: var(--cream);
+  }
+
+  .fmt__caption {
+    position: absolute;
+    right: 0.7rem;
+    bottom: 0.7rem;
+    padding: 0.25rem 0.55rem;
+    border-radius: 999px;
+    background: var(--glass);
+    color: var(--fog);
+    font-size: 0.72rem;
+  }
+
+  .fmt__text {
+    margin-top: 1.25rem;
+  }
+
+  .fmt__spec {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .fmt__badge {
+    padding: 0.25rem 0.5rem;
+    border-radius: 999px;
+    background: var(--cream);
+    color: var(--night);
+  }
+
+  .fmt__title {
+    margin-top: 0.55rem;
+    font-size: clamp(1.35rem, 1.9vw, 1.75rem);
+    font-weight: 720;
+    font-stretch: 112%;
+    letter-spacing: -0.025em;
+    line-height: 1.08;
+  }
+
+  .fmt__desc {
+    margin-top: 0.6rem;
+    color: var(--fog);
+    font-size: 0.95rem;
+    line-height: 1.55;
+  }
+
+  .fmt__item--wide .fmt__desc {
+    max-width: 38rem;
+    font-size: 1.02rem;
+  }
+
+  .fmt__points {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.35rem 1.25rem;
+    margin: 1rem 0 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .fmt__points li {
+    padding-top: 0.45rem;
+    border-top: 1px solid var(--hair);
+    font-size: 0.9rem;
+    font-weight: 540;
+  }
+
+  .fmt__tags {
+    margin-top: 0.9rem;
+    color: var(--fog-2);
+    font-size: 0.82rem;
+  }
+
+  .fmt__links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem 1.1rem;
+    margin-top: 0.5rem;
+  }
+
+  .fmt__links a {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    min-height: 2.75rem;
+    font-size: 0.85rem;
+    font-weight: 560;
+    text-decoration: underline;
+    text-decoration-color: var(--hair-strong);
+    text-underline-offset: 0.3em;
+    transition: text-decoration-color var(--dur-fast) ease;
+  }
+
+  .fmt__links a:hover {
+    text-decoration-color: var(--cream);
+  }
+
+  .fmt__links :global(svg) {
+    width: 0.85rem;
+    height: 0.85rem;
+  }
+
+  .fmt__universes {
+    display: grid;
+    gap: 0.6rem;
+    margin-top: clamp(3.5rem, 7vw, 5.5rem);
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--hair);
+  }
+
+  .fmt__universe-list {
+    font-size: clamp(1.25rem, 2.6vw, 2.2rem);
+    font-weight: 700;
+    font-stretch: 118%;
+    letter-spacing: -0.025em;
+    line-height: 1.2;
+    text-wrap: balance;
+  }
+
+  @media (max-width: 56rem) {
+    .fmt__grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .fmt__item--wide {
+      grid-column: 1 / -1;
+    }
+
+    .fmt__points {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

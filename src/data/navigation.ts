@@ -1,21 +1,20 @@
 /**
- * Liens du menu principal. Les ancres (#services…) correspondent aux `id`
- * des sections de la page d'accueil.
+ * Menu principal : les pastilles en haut à gauche.
+ * `section` : id de la section de l'accueil qui allume la pastille pendant le défilement,
+ * ou nom de la page (« realisations » pour /portfolio et les pages projet).
  */
 
 export interface NavItem {
   label: string;
   href: string;
-  /** id de la section ciblée (sert à surligner le lien actif). */
   section: string;
 }
 
 export const navigation: NavItem[] = [
-  { label: 'Accueil', href: '/#top', section: 'top' },
-  { label: 'Services', href: '/#services', section: 'services' },
-  { label: 'Portfolio', href: '/portfolio', section: 'portfolio' },
-  { label: 'À propos', href: '/#about', section: 'about' },
-  { label: 'Offres', href: '/#offres', section: 'offres' },
+  { label: 'Accueil', href: '/', section: 'top' },
+  { label: 'Réalisations', href: '/portfolio', section: 'realisations' },
+  { label: 'Méthode', href: '/#methode', section: 'methode' },
+  { label: 'Tarifs', href: '/#tarifs', section: 'tarifs' },
 ];
 
 export const contactNav = { label: 'Contact', href: '/contact' };

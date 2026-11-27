@@ -1,0 +1,509 @@
+---
+/**
+ * Accueil : « Du rush au master ». Six étapes (src/data/method.ts) et, à côté, la bande d'un vrai montage
+ * qui suit l'étape lue (src/scripts/modules/method.ts) : Victoire Royale.
+ * Tout ce que montre la bande est réel : durées et chapitres (src/data/portfolio.ts), courbe du son mesurée
+ * sur le fichier livré (src/data/vr-loudness.ts), repères d'effets relevés dans le compte rendu de montage.
+ * Sans JavaScript : la bande est affichée en entier (état « master »).
+ */
+import { method } from '../../data/method';
+import { vrLoudness } from '../../data/vr-loudness';
+import { liveProjects, pad } from '../../lib/portfolio';
+import PlayTrigger from '../portfolio/PlayTrigger.astro';
+import Icon from '../ui/Icon.astro';
+
+const vr = liveProjects.find((p) => p.slug === 'victoire-royale');
+const raw = vr?.compression?.rawSeconds ?? 803;
+const final = vr?.compression?.finalSeconds ?? 340;
+const kept = final / raw;
+
+/* Courbe du mix : -8 LUFS en haut, -36 en bas (le silence du tout début touche le fond). */
+const yOf = (l: number): number => Math.min(60, Math.max(0, ((-8 - l) / 28) * 60));
+const wave = vrLoudness.values
+  .map((l, i) => `${i === 0 ? 'M' : 'L'}${i * vrLoudness.step},${yOf(l).toFixed(1)}`)
+  .join(' ');
+const target = yOf(-14).toFixed(2);
+
+/* Repères relevés dans le compte rendu de montage (temps de la vidéo finale, en secondes). */
+const marks = [
+  { at: 2, time: '0:02', label: 'Arrêt sur image, rembobinage' },
+  { at: 227, time: '3:47', label: 'Ralenti à 50 %' },
+  { at: 336, time: '5:36', label: 'Carte de fin' },
+];
+const boundaries = (vr?.outline ?? []).slice(1).map((c) => c.seconds);
+
+const stages = [
+  { status: 'Rush', clock: vr?.compression?.raw ?? '13:23', fact: '1600 × 900 · environ 120 i/s · son du jeu, aucune voix' },
+  { status: 'Sélection', clock: vr?.compression?.final ?? '5:40', fact: '13:23 → 5:40 · 7 min 43 coupées' },
+  { status: 'Montage', clock: '5:40', fact: '68 plans · 8 chapitres' },
+  { status: 'Son', clock: '5:40', fact: `${String(vrLoudness.integrated).replace('.', ',').replace('-', '−')} LUFS intégrés · 4 morceaux` },
+  { status: 'Effets', clock: '5:40', fact: '10 transitions · 2 ralentis natifs · 1 arrêt sur image' },
+  { status: 'Master', clock: '5:40', fact: '1920 × 1080 · 60 i/s · −14,5 LUFS' },
+];
+const last = stages[stages.length - 1];
+const finale = vr?.playable[0];
+---
+
+<section id="methode" class="mth" data-method data-spy="methode" aria-labelledby="mth-title">
+  <div class="wrap">
+    <header class="mth__head">
+      <p class="label" data-reveal>Méthode</p>
+      <h2 class="h-title" id="mth-title" data-reveal>{method.title}</h2>
+      <p class="lede muted" data-reveal data-reveal-delay="0.08">{method.lead}</p>
+    </header>
+
+    <div class="mth__grid">
+      <ol class="mth__steps">
+        {
+          method.steps.map((s, i) => (
+            <li class="mth__step" data-step={i}>
+              <p class="label num">
+                {pad(i + 1)} / {pad(method.steps.length)}
+              </p>
+              <h3 class="mth__title">{s.title}</h3>
+              <p class="mth__text">{s.text}</p>
+              <p class="mth__example">
+                <span class="label">Sur Victoire Royale</span>
+                {s.example}
+              </p>
+            </li>
+          ))
+        }
+      </ol>
+
+      <figure
+        class="mth__viz"
+        data-method-viz
+        data-level={stages.length - 1}
+        data-stages={JSON.stringify(stages)}
+        aria-label="La bande de Victoire Royale, étape par étape"
+      >
+        <div class="mth__top">
+          <p class="label mth__status" data-method-status>{last.status}</p>
+          <p class="mth__clock num" data-method-clock>{last.clock}</p>
+        </div>
+
+        <div class="mth__track" aria-hidden="true">
+          <span class="mth__rush" style={`--kept:${kept.toFixed(4)}`}></span>
+          <span class="mth__offcut" style={`--kept:${kept.toFixed(4)}`}><span class="label">Coupé</span></span>
+          <ol class="mth__chapters">
+            {
+              (vr?.outline ?? []).map((c, i) => (
+                <li style={`--from:${c.from.toFixed(4)};--to:${c.to.toFixed(4)};--i:${i}`}>
+                  <span>{c.label}</span>
+                </li>
+              ))
+            }
+          </ol>
+          <span class="mth__ticks">
+            {boundaries.map((b) => <i style={`--at:${(b / final).toFixed(4)}`} />)}
+          </span>
+        </div>
+
+        <ul class="mth__marks" aria-hidden="true">
+          {
+            marks.map((m) => (
+              <li style={`--at:${(m.at / final).toFixed(4)}`}>
+                <span class="num">{m.time}</span> {m.label}
+              </li>
+            ))
+          }
+        </ul>
+
+        <svg class="mth__wave" viewBox={`0 0 ${final} 60`} preserveAspectRatio="none" aria-hidden="true">
+          <line x1="0" x2={final} y1={target} y2={target} class="mth__target"></line>
+          <path d={wave} pathLength="1" class="mth__curve"></path>
+        </svg>
+        <p class="mth__wave-label">Son du mix final, mesuré · le trait : −14 LUFS, la cible de YouTube</p>
+
+        <figcaption class="mth__fact num" data-method-fact>{last.fact}</figcaption>
+
+        {
+          vr && finale && (
+            <PlayTrigger project={vr} video={finale} class="pill pill--solid mth__play">
+              <Icon name="play" />
+              {finale.playLabel}
+            </PlayTrigger>
+          )
+        }
+      </figure>
+    </div>
+  </div>
+</section>
+
+<style>
+  .mth {
+    padding-block: clamp(5rem, 11vw, 9rem);
+    background:
+      radial-gradient(ellipse 60% 40% at 85% 30%, rgb(255 138 61 / 0.07), transparent 70%),
+      var(--night);
+  }
+
+  .mth__head {
+    display: grid;
+    gap: 1.1rem;
+    max-width: 48rem;
+  }
+
+  .mth__grid {
+    display: grid;
+    grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+    gap: clamp(2rem, 6vw, 6rem);
+    margin-top: clamp(3rem, 6vw, 5rem);
+  }
+
+  /* ── Les étapes ── */
+  .mth__steps {
+    display: grid;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .mth__step {
+    min-height: 62svh;
+    padding: 1.6rem 0 2.4rem;
+    border-top: 1px solid var(--hair);
+    transition: opacity var(--dur-slow) var(--ease-out);
+  }
+
+  .mth:global(.is-live) .mth__step:not(:global(.is-current)) {
+    opacity: 0.42;
+  }
+
+  .mth__title {
+    margin-top: 0.7rem;
+    font-size: clamp(1.45rem, 2.2vw, 2rem);
+    font-weight: 720;
+    font-stretch: 112%;
+    letter-spacing: -0.03em;
+    line-height: 1.05;
+  }
+
+  .mth__text {
+    margin-top: 0.8rem;
+    max-width: 32rem;
+    color: var(--fog);
+  }
+
+  .mth__example {
+    display: grid;
+    gap: 0.4rem;
+    margin-top: 1.25rem;
+    max-width: 32rem;
+    padding-top: 0.9rem;
+    border-top: 1px solid var(--hair);
+    font-size: 0.98rem;
+    font-weight: 520;
+    line-height: 1.5;
+  }
+
+  .mth__example .label {
+    color: var(--tungsten);
+  }
+
+  /* ── La bande ── */
+  .mth__viz {
+    position: sticky;
+    top: calc(var(--header-h) + 2rem);
+    align-self: start;
+    display: grid;
+    gap: 1.1rem;
+    margin: 0;
+    padding: clamp(1.25rem, 2.5vw, 2rem);
+    border: 1px solid var(--hair);
+    border-radius: var(--radius-lg);
+    background: var(--night-2);
+  }
+
+  .mth__top {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 1rem;
+  }
+
+  .mth__status {
+    color: var(--tungsten);
+  }
+
+  .mth__clock {
+    font-size: clamp(2.6rem, 5.5vw, 4.6rem);
+    font-weight: 840;
+    font-stretch: 125%;
+    letter-spacing: -0.03em;
+    line-height: 0.9;
+  }
+
+  .mth__track {
+    position: relative;
+    height: 4.25rem;
+    margin-top: 0.6rem;
+  }
+
+  .mth__rush,
+  .mth__offcut {
+    position: absolute;
+    inset: 0.9rem 0;
+    border-radius: 0.4rem;
+  }
+
+  .mth__rush {
+    background: repeating-linear-gradient(90deg, rgb(239 228 200 / 0.42) 0 3px, rgb(239 228 200 / 0.16) 3px 9px);
+    transform-origin: left center;
+    transition:
+      transform var(--dur-crawl) var(--ease-expo),
+      opacity var(--dur-normal) ease;
+  }
+
+  .mth__offcut {
+    left: calc(var(--kept) * 100% + 0.5rem);
+    display: grid;
+    place-items: center;
+    border: 1px dashed rgb(239 228 200 / 0.4);
+    opacity: 0;
+    transition: opacity var(--dur-slow) ease 0.35s;
+  }
+
+  .mth__chapters {
+    position: absolute;
+    inset: 0.9rem 0;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .mth__chapters li {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: calc(var(--from) * 100%);
+    width: calc((var(--to) - var(--from)) * 100% - 3px);
+    border-radius: 0.3rem;
+    background: rgb(239 228 200 / 0.18);
+    box-shadow: inset 0 0 0 1px rgb(239 228 200 / 0.35);
+    transform: scaleY(0);
+    transform-origin: bottom;
+    transition:
+      transform var(--dur-slow) var(--ease-expo),
+      background-color var(--dur-slow) ease;
+    transition-delay: calc(var(--i) * 0.06s);
+  }
+
+  .mth__chapters span {
+    position: absolute;
+    left: 0.35rem;
+    bottom: calc(100% + 0.35rem);
+    color: var(--fog);
+    font-size: 0.62rem;
+    font-weight: 600;
+    white-space: nowrap;
+    opacity: 0;
+    transition: opacity var(--dur-normal) ease;
+  }
+
+  /* Un libellé sur deux sous la bande : les chapitres courts ne se chevauchent pas */
+  .mth__chapters li:nth-child(even) span {
+    bottom: auto;
+    top: calc(100% + 0.35rem);
+  }
+
+  .mth__chapters li:last-child span {
+    left: auto;
+    right: 0;
+  }
+
+  /* Les deux premiers chapitres (6 s et 23 s) sont trop courts pour porter un libellé */
+  .mth__chapters li:nth-child(-n + 2) span {
+    display: none;
+  }
+
+  .mth__marks {
+    margin-top: 0.6rem;
+  }
+
+  .mth__ticks i {
+    position: absolute;
+    top: 0.3rem;
+    bottom: 0.3rem;
+    left: calc(var(--at) * 100%);
+    width: 2px;
+    margin-left: -2px;
+    background: var(--tungsten);
+    opacity: 0;
+    transition: opacity var(--dur-normal) ease;
+  }
+
+  .mth__marks {
+    position: relative;
+    height: 2.6rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .mth__marks li {
+    position: absolute;
+    top: 0;
+    left: calc(var(--at) * 100%);
+    padding-left: 0.5rem;
+    border-left: 1px solid var(--tungsten);
+    color: var(--fog);
+    font-size: 0.7rem;
+    line-height: 1.3;
+    white-space: nowrap;
+    opacity: 0;
+    transform: translateY(6px);
+    transition:
+      opacity var(--dur-normal) ease,
+      transform var(--dur-slow) var(--ease-expo);
+  }
+
+  .mth__marks li:last-child {
+    translate: -100% 0;
+    padding: 0 0.5rem 0 0;
+    border-left: 0;
+    border-right: 1px solid var(--tungsten);
+    text-align: right;
+  }
+
+  .mth__marks .num {
+    display: block;
+    color: var(--cream);
+    font-weight: 650;
+  }
+
+  .mth__wave {
+    width: 100%;
+    height: 4.5rem;
+    overflow: visible;
+  }
+
+  .mth__target {
+    stroke: rgb(255 138 61 / 0.55);
+    stroke-width: 1;
+    stroke-dasharray: 4 4;
+    vector-effect: non-scaling-stroke;
+  }
+
+  .mth__curve {
+    fill: none;
+    stroke: var(--cream);
+    stroke-width: 1.5;
+    stroke-linejoin: round;
+    vector-effect: non-scaling-stroke;
+    stroke-dasharray: 1;
+    stroke-dashoffset: 0;
+    transition: stroke-dashoffset 1.6s var(--ease-out);
+  }
+
+  .mth__wave-label {
+    margin-top: -0.4rem;
+    color: var(--fog-2);
+    font-size: 0.72rem;
+  }
+
+  .mth__fact {
+    padding-top: 0.9rem;
+    border-top: 1px solid var(--hair);
+    font-size: 1rem;
+    font-weight: 600;
+  }
+
+  .mth__play {
+    justify-self: start;
+  }
+
+  /* ── États de la bande (data-level : 0 rush → 5 master) ── */
+  .mth__viz[data-level='0'] .mth__offcut,
+  .mth__viz[data-level='0'] .mth__chapters li,
+  .mth__viz[data-level='1'] .mth__chapters li {
+    opacity: 0;
+  }
+
+  .mth__viz[data-level='1'] .mth__rush {
+    transform: scaleX(var(--kept));
+  }
+
+  .mth__viz[data-level='1'] .mth__offcut {
+    opacity: 1;
+  }
+
+  .mth__viz:is([data-level='2'], [data-level='3'], [data-level='4'], [data-level='5']) .mth__rush {
+    opacity: 0;
+  }
+
+  .mth__viz:is([data-level='2'], [data-level='3'], [data-level='4'], [data-level='5']) .mth__chapters li {
+    transform: none;
+  }
+
+  .mth__viz:is([data-level='2'], [data-level='3'], [data-level='4'], [data-level='5']) .mth__chapters span {
+    opacity: 1;
+  }
+
+  .mth__viz:not(:is([data-level='3'], [data-level='4'], [data-level='5'])) .mth__curve {
+    stroke-dashoffset: 1;
+  }
+
+  .mth__viz:is([data-level='4'], [data-level='5']) .mth__ticks i,
+  .mth__viz:is([data-level='4'], [data-level='5']) .mth__marks li {
+    opacity: 1;
+    transform: none;
+  }
+
+  .mth__viz[data-level='5'] .mth__chapters li {
+    background: var(--cream);
+    box-shadow: none;
+  }
+
+  .mth__viz[data-level='5'] .mth__chapters span {
+    color: var(--cream);
+  }
+
+  .mth__viz:not([data-level='5']) .mth__play {
+    visibility: hidden;
+  }
+
+  @media (max-width: 56rem) {
+    .mth__grid {
+      grid-template-columns: 1fr;
+      gap: 0;
+    }
+
+    /* La bande reste en haut pendant qu'on lit les étapes */
+    .mth__viz {
+      order: -1;
+      top: var(--header-h);
+      z-index: 2;
+      gap: 0.6rem;
+      padding: 1rem;
+      border-radius: 0 0 var(--radius-md) var(--radius-md);
+      box-shadow: 0 1.5rem 2rem -1rem var(--night);
+    }
+
+    .mth__clock {
+      font-size: 2.2rem;
+    }
+
+    .mth__wave {
+      height: 2.75rem;
+    }
+
+    .mth__marks {
+      height: 2.2rem;
+    }
+
+    .mth__marks li:not(:last-child):not(:first-child) {
+      display: none;
+    }
+
+    .mth__chapters span,
+    .mth__wave-label {
+      display: none;
+    }
+
+    .mth__step {
+      min-height: 48svh;
+    }
+  }
+</style>

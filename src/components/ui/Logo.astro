@@ -1,5 +1,8 @@
 ---
-/** Logotype : le nom de la marque + le point REC rouge. */
+/**
+ * Logotype : deux plans séparés par une coupe, le nom, le métier en dessous
+ * (comme « Halflight / Glencoe » dans la référence).
+ */
 import { site } from '../../config/site';
 
 interface Props {
@@ -10,27 +13,57 @@ const { class: className } = Astro.props;
 ---
 
 <span class:list={['logo', className]}>
-  <span class="logo__word">{site.name}</span><span class="logo__dot" aria-hidden="true"></span>
+  <svg class="logo__mark" viewBox="0 0 30 16" aria-hidden="true">
+    <rect x="0" y="0" width="17" height="16" rx="2.5"></rect>
+    <rect x="21.75" y="0.75" width="7.5" height="14.5" rx="2"></rect>
+  </svg>
+  <span class="logo__text">
+    <span class="logo__name">{site.name}</span>
+    <span class="logo__sub">monteur vidéo</span>
+  </span>
 </span>
 
 <style>
   .logo {
     display: inline-flex;
-    align-items: flex-end;
-    gap: 0.12em;
-    font-weight: 620;
-    font-size: 1.35rem;
-    letter-spacing: -0.055em;
-    line-height: 1;
-    color: var(--color-fog-100);
+    align-items: center;
+    gap: 0.6rem;
+    color: var(--cream);
   }
 
-  .logo__dot {
-    width: 0.26em;
-    height: 0.26em;
-    margin-bottom: 0.12em;
-    border-radius: 50%;
-    background: var(--color-rec);
-    box-shadow: 0 0 10px rgb(229 22 42 / 0.7);
+  .logo__mark {
+    width: 1.55rem;
+    height: auto;
+    flex: none;
+  }
+
+  .logo__mark rect:first-child {
+    fill: currentColor;
+  }
+
+  .logo__mark rect:last-child {
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.5;
+  }
+
+  .logo__text {
+    display: grid;
+    line-height: 1;
+  }
+
+  .logo__name {
+    font-size: 1rem;
+    font-weight: 780;
+    font-stretch: 125%;
+    letter-spacing: -0.01em;
+  }
+
+  .logo__sub {
+    margin-top: 0.2rem;
+    font-size: 0.625rem;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    color: var(--fog);
   }
 </style>
